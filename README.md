@@ -7,26 +7,58 @@ Claude Receipt is a local-first tool that turns a Claude Code session into a rec
 The long-term goal is "Spotify Wrapped for Claude Code": session receipts, weekly and monthly summaries, and a yearly Claude Wrapped. All of it is computed on your machine from the data Claude Code already writes locally.
 
 ```
-        CLAUDE RECEIPT
-   ----------------------------
-   SESSION        a3f9…  14:02
-   PROJECT        claude-receipt
-   DURATION              1h 42m
-   ............................
-   PROMPTS                   23
-   TOOL CALLS               187
-   LINES              +412 -97
-   ............................
-   API EQUIVALENT        $12.84
-   ============================
-      THANK YOU FOR SHIPPING
+/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\
+
+      C L A U D E   R E C E I P T
+        itemized session record
+========================================
+SESSION ..................... ordinary
+PROJECT ...................... project
+STATUS ...................... COMPLETE
+
+-- HARD STATS --------------------------
+DURATION ......................... 21s *
+ACTIVE TIME (EST.) .............. ~21s
+TOKENS OUT ....................... 908
+API EQUIVALENT ................. $0.05
+
+-- CODING STATS ------------------------
+LINES ADDED ....................... +3 *
+TEST RUNS DETECTED ................ ~0
+
+-- SESSION LORE ------------------------
+BIGGEST RABBIT HOLE ... 4 calls in 17s *
+CACHE HIT RATE ................... 90% *
+========================================
+plain    recorded directly
+  *      computed from data
+  ~      heuristic estimate
 ```
 
-*Illustrative mock-up only. None of this output exists yet.*
+*Excerpt of a receipt rendered from an anonymized test fixture (full version: `test/render/snapshots/ordinary.txt`).*
 
 ## Status
 
-**Experimental. Pre-implementation.** This repository currently contains the product and technical planning documents, plus the M0 research into Claude Code's local format ([findings](docs/research/M0_FINDINGS.md), anonymized fixtures and verification tests). There is no working CLI, no parser and no package to install yet.
+**Experimental, pre-release (M3).** It parses Claude Code's local session files, computes a Receipt, keeps a local metrics-only archive, and prints a terminal receipt. It is not published to npm yet (packaging is M4), so run it from a checkout. Image receipts, weekly/monthly summaries and Wrapped come later ([roadmap](docs/ROADMAP.md)).
+
+## Usage
+
+Requires Node 24 or newer. From a checkout:
+
+```
+node src/cli/main.ts                   # current or most recent session in this directory
+node src/cli/main.ts last              # most recent completed session anywhere
+node src/cli/main.ts list              # recent sessions (--limit N)
+node src/cli/main.ts <session-prefix>  # a specific session
+node src/cli/main.ts last --json       # the Receipt as JSON
+node src/cli/main.ts last --redact     # hide project, paths and title for sharing
+```
+
+`npm link` in the checkout installs a `claude-receipt` command with the same arguments.
+
+Every run also archives finished sessions to `~/.claude-receipt/archive/` (metrics only, no conversation text), so they survive Claude Code's transcript cleanup. `--no-archive` makes a run read-only. `CLAUDE_CONFIG_DIR` and `CLAUDE_RECEIPT_HOME` relocate the Claude Code data and the archive.
+
+On the receipt, plain values were recorded by Claude Code, values ending in `*` were computed from recorded data, and values starting with `~` are estimates.
 
 ## Principles
 

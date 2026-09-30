@@ -1,0 +1,60 @@
+/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\
+
+      C L A U D E   R E C E I P T
+        itemized session record
+========================================
+SESSION ..................... 00000000
+PROJECT ...................... project
+STARTED ............. 2026-09-28 09:56
+ENDED ............... 2026-09-28 09:56
+ENTRY ....................... HEADLESS
+STATUS ...................... COMPLETE
+
+-- HARD STATS --------------------------
+DURATION ......................... 13s *
+ACTIVE TIME (EST.) .............. ~13s
+CLAUDE CODE OPEN ................. 14s
+RUNS ............................... 1 *
+CLAUDE WORKING ................... 14s
+MODELS
+  haiku-4-5
+TOKENS IN ......................... 46
+TOKENS OUT ..................... 1,080
+CACHE READ .................... 98,992
+CACHE WRITE ................... 32,400
+API EQUIVALENT ................. $0.06
+PROMPTS ............................ 1
+TOOL CALLS ......................... 2
+TOP TOOLS
+  Agent ............................ 1
+  Read ............................. 1
+
+-- CODING STATS ------------------------
+FILES READ ......................... 1 *
+FILES CREATED ...................... 0 *
+FILES EDITED ....................... 0 *
+LINES ADDED ....................... +0 *
+LINES REMOVED ..................... -0 *
+SHELL COMMANDS ..................... 0
+TEST RUNS DETECTED ................ ~0
+TOOL ERRORS ........................ 0
+INTERRUPTED TOOL RUNS .............. 0
+CLAUDE COMMITS DETECTED ........... ~0
+
+-- SESSION LORE ------------------------
+BIGGEST RABBIT HOLE .... 2 calls in 7s *
+LONGEST ERROR STREAK ............... 0 *
+CACHE HIT RATE ................... 75% *
+
+========================================
+9 metrics unavailable, not shown
+plain    recorded directly
+  *      computed from data
+  ~      heuristic estimate
+API EQUIVALENT = these tokens at API
+list prices
+times: UTC
+
+         KEEP FOR YOUR RECORDS
+
+\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/

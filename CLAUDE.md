@@ -12,7 +12,8 @@ Claude Receipt turns Claude Code sessions into receipts: hard stats, coding stat
 - M1a (source adapter + normalized Session in `src/source/claude-code/`): implemented, see `docs/research/M1_FINDINGS.md`.
 - M1b (analytics in `src/analytics/`, Receipt model + validator in `src/receipt/`, Receipt JSON in `src/render/json.ts`, read-only git in `src/git/`): implemented.
 - M2 (local metrics-only archive in `src/archive/`): implemented.
-- M3 onwards (terminal renderer, product CLI and its archive sweep, aggregation, visual receipt): not started. Don't build them unless the current task asks for it.
+- M3 (CLI in `src/cli/` with the archive sweep, terminal renderer in `src/render/tty.ts` + `format.ts`, redaction in `src/receipt/redact.ts`): implemented.
+- M4 onwards (packaging/release, aggregation, visual receipt, Wrapped): not started. Don't build them unless the current task asks for it.
 
 ## Commands
 
@@ -20,7 +21,8 @@ Node ≥ 24 runs the TypeScript sources directly (no build step). Dev-only depen
 
 | Command | What it does |
 |---|---|
-| `npm test` | All tests: parser (`test/source/`), analytics and Receipt contract (`test/analytics/`), git enrichment on throwaway repos (`test/git/`), archive (`test/archive/`), fixture safety |
+| `npm test` | All tests: parser (`test/source/`), analytics and Receipt contract (`test/analytics/`), git enrichment on throwaway repos (`test/git/`), archive (`test/archive/`), renderer and snapshots (`test/render/`), CLI and sweep (`test/cli/`), fixture safety |
+| `node src/cli/main.ts [last \| list \| <prefix>] [--json] [--redact] [--no-archive]` | The product CLI (also `npm run receipt --`, or `claude-receipt` after `npm link`). Writes to the real archive unless `--no-archive` or `CLAUDE_RECEIPT_HOME` points elsewhere |
 | `npm run typecheck` | `tsc` in strict mode, no emit |
 | `node src/dev/parse.ts <main.jsonl>...` | Parse transcripts together (forks detected among them) and print Session JSON |
 | `node src/dev/parse.ts --session <id\|prefix>` / `--all` | Same for local sessions under `CLAUDE_CONFIG_DIR` or `~/.claude` |

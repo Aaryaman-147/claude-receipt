@@ -107,6 +107,8 @@ Default redaction for anything written to a file or meant for sharing:
 
 The terminal receipt (on your own screen) shows project and file names by default, because it isn't shared unless you choose to share it. `--redact` applies export rules to the terminal too, for screenshots.
 
+As built (M3, `src/receipt/redact.ts`): `--redact` hides the project, project key, `cwd` and title, shortens session and fork-parent ids to 4 characters, shows the most-edited file as its extension only, and groups MCP tools as `MCP`. It is applied to the terminal receipt, `--json`, and `list` (text and JSON). `list` shows only start time, short session id, project name, duration and state. Nothing the CLI prints contains prompt or response text, commands, tool output, or API/message/tool/agent ids; the M3 real-data check found none of 2,281 private strings and none of 3,631 telemetry ids in any output or in the archive.
+
 `--json` is machine output for the user's own scripts. It includes the fields in §5 plus the session title, and nothing else from the "never stored" list. A `--json --redact` combination applies the export rules.
 
 ## 7. For contributors

@@ -1,0 +1,41 @@
+/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\
+
+      C L A U D E   R E C E I P T
+        itemized session record
+========================================
+SESSION ....................... killed
+PROJECT ...................... project
+STARTED ............. 2026-09-28 10:00
+ENDED ............... 2026-09-28 10:00
+ENTRY ....................... HEADLESS
+STATUS .................... INCOMPLETE
+
+-- HARD STATS --------------------------
+DURATION .......................... 2s *
+ACTIVE TIME (EST.) ............... ~2s
+RUNS ............................... 1 *
+PROMPTS ............................ 1
+TOOL CALLS ......................... 0
+
+-- CODING STATS ------------------------
+FILES READ ......................... 0 *
+FILES CREATED ...................... 0 *
+FILES EDITED ....................... 0 *
+LINES ADDED ....................... +0 *
+LINES REMOVED ..................... -0 *
+SHELL COMMANDS ..................... 0
+TEST RUNS DETECTED ................ ~0
+TOOL ERRORS ........................ 0
+INTERRUPTED TOOL RUNS .............. 0
+CLAUDE COMMITS DETECTED ........... ~0
+
+========================================
+20 metrics unavailable, not shown
+plain    recorded directly
+  *      computed from data
+  ~      heuristic estimate
+times: UTC
+
+         THANK YOU FOR SHIPPING
+
+\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/

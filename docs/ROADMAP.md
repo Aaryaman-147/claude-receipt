@@ -91,7 +91,7 @@ Each item gets a short written finding in `M0_FINDINGS.md` and at least one fixt
 
 ## M2: Local archive
 
-**Status: implemented (2026-10-01), awaiting review.** Design: `ARCHITECTURE.md` §6; privacy boundary: `PRIVACY.md` §5.
+**Status: done (2026-10-01).** Design: `ARCHITECTURE.md` §6; privacy boundary: `PRIVACY.md` §5.
 
 - [x] `archive/` (`src/archive/index.ts`) writes `ArchiveEntry` atomically (temp file + rename) to `~/.claude-receipt/archive/<key>.json` (`CLAUDE_RECEIPT_HOME` respected). The key is a hash of the session id, not the raw id.
 - [x] Idempotent: re-archiving identical content (ignoring `generatedAt`) is `unchanged` and not rewritten. A resumed session whose transcript grew replaces its entry; any other difference is a `conflict` that leaves history untouched.
@@ -104,14 +104,17 @@ Each item gets a short written finding in `M0_FINDINGS.md` and at least one fixt
 
 ## M3: Terminal receipt and CLI
 
-- [ ] Every CLI run sweeps local transcripts and archives new or changed, non-live sessions (`writeReceipt`); unchanged transcripts are skipped by fingerprint. Moved here from M2.
-- [ ] Product CLI: `claude-receipt` (current/most recent session for the directory), `last`, `<sessionId>` (prefix), `list`, `--json` (the M1b Receipt JSON). Moved here from M1b.
-- [ ] `render/tty` renders the Receipt as a narrow receipt (~40 columns): header, Hard stats, Coding stats, Session lore, footer microcopy, and a `~` legend when heuristics are present.
-- [ ] Null metrics are omitted, never shown as `0`. Heuristic values always carry `~`; derived values carry their own distinct mark; exact values carry neither. A test asserts every rendered metric's mark matches its provenance, and a legend explains the marks in use (`METRICS.md` → Rendering rule).
-- [ ] Cost is labelled `API EQUIVALENT`. The words "spent", "paid", "charged" and "bill" appear nowhere (test).
-- [ ] Works with `NO_COLOR`, in non-TTY output (pipe), in Windows Terminal and PowerShell, and with wide characters in project names (alignment test with `string-width`).
-- [ ] `--redact` applies export redaction rules (`PRIVACY.md` §6).
-- [ ] Snapshot tests per fixture.
+**Status: implemented (2026-10-01), awaiting review.** Commands and semantics: `PRD.md` §5.4; sweep: `ARCHITECTURE.md` §6.
+
+- [x] Every CLI run sweeps local transcripts and archives new or changed, non-live sessions (`writeReceipt`, `src/cli/sweep.ts`). Project directories whose sessions all match their archived fingerprint (and none is live) are skipped without parsing. Moved here from M2.
+- [x] Product CLI (`src/cli/run.ts`, entry `src/cli/main.ts`, bin `bin/claude-receipt.js`): `claude-receipt` (current/most recent session for the directory), `last`, `<sessionId>` (prefix), `list` (`--limit`), `--json` (the M1b Receipt JSON), `--redact`, `--no-archive`. Moved here from M1b.
+- [x] `render/tty` renders the Receipt as a narrow receipt (40 columns, down to 28): header, Hard stats, Coding stats, Session lore, footer microcopy, and a legend of the marks in use.
+- [x] Null metrics are omitted, never shown as `0`, and their count is stated. Heuristic values carry `~`; derived values carry ` *`; exact values carry neither. A test asserts every rendered metric's mark matches its provenance (all fixtures, plus a receipt with every metric filled, at several widths), and a legend explains the marks in use.
+- [x] Cost is labelled `API EQUIVALENT`. The words "spent", "paid", "charged" and "bill" appear nowhere (test).
+- [x] Works with `NO_COLOR` and in non-TTY output (plain ASCII; ANSI only on a TTY), and with wide characters in project names (alignment test). Instead of the `string-width` dependency, a small built-in display-width function (wide East Asian and emoji = 2, combining marks = 0). Windows Terminal/PowerShell: ASCII-only output; verified in this environment's terminal, not in a separate console test.
+- [x] `--redact` applies export redaction rules (`PRIVACY.md` §6).
+- [x] Snapshot tests for three fixtures (`test/render/snapshots/`).
+- Not done: `npx claude-receipt` from npm needs the M4 build step (Node doesn't strip TypeScript inside `node_modules`). From a checkout: `node src/cli/main.ts` or `npm link`.
 
 ## M4: v0.1 release
 

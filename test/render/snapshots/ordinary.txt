@@ -1,0 +1,68 @@
+/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\
+
+      C L A U D E   R E C E I P T
+        itemized session record
+========================================
+SESSION ..................... ordinary
+PROJECT ...................... project
+STARTED ............. 2026-09-28 09:52
+ENDED ............... 2026-09-28 09:52
+ENTRY ....................... HEADLESS
+STATUS ...................... COMPLETE
+
+-- HARD STATS --------------------------
+DURATION ......................... 21s *
+ACTIVE TIME (EST.) .............. ~21s
+CLAUDE CODE OPEN ................. 22s
+RUNS ............................... 1 *
+CLAUDE WORKING ................... 12s
+MODELS
+  haiku-4-5
+TOKENS IN ......................... 42
+TOKENS OUT ....................... 908
+CACHE READ ................... 139,624
+CACHE WRITE ................... 15,208
+API EQUIVALENT ................. $0.05
+PROMPTS ............................ 1
+TOOL CALLS ......................... 4
+TOP TOOLS
+  Bash ............................. 2
+  Edit ............................. 1
+  Write ............................ 1
+
+-- CODING STATS ------------------------
+FILES READ ......................... 0 *
+FILES CREATED ...................... 1 *
+FILES EDITED ....................... 1 *
+LINES ADDED ....................... +3 *
+LINES REMOVED ..................... -1 *
+MOST EDITED ................ file1.txt *
+LANGUAGES
+  Text ....................... 4 lines *
+SHELL COMMANDS ..................... 2
+TOP PROGRAMS
+  echo ............................. 1 *
+  ls ............................... 1 *
+TEST RUNS DETECTED ................ ~0
+TOOL ERRORS ........................ 1
+INTERRUPTED TOOL RUNS .............. 0
+CLAUDE COMMITS DETECTED ........... ~0
+
+-- SESSION LORE ------------------------
+BIGGEST RABBIT HOLE ... 4 calls in 17s *
+LONGEST ERROR STREAK ............... 1 *
+READS PER EDIT ..................... 0 *
+CACHE HIT RATE ................... 90% *
+
+========================================
+6 metrics unavailable, not shown
+plain    recorded directly
+  *      computed from data
+  ~      heuristic estimate
+API EQUIVALENT = these tokens at API
+list prices
+times: UTC
+
+          NO REFUNDS ON TOKENS
+
+\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/

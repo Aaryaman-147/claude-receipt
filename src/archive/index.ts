@@ -30,7 +30,7 @@ export type ReadResult =
   | { status: "ok"; entry: ArchiveEntry }
   | { status: "missing" | "malformed" | "unsupported" | "invalid"; key: string; reason: string };
 
-export const archiveDir = (): string => join(process.env.CLAUDE_RECEIPT_HOME || join(homedir(), ".claude-receipt"), "archive");
+export const archiveDir = (env: NodeJS.ProcessEnv = process.env): string => join(env.CLAUDE_RECEIPT_HOME || join(homedir(), ".claude-receipt"), "archive");
 
 // Deterministic, filesystem-safe (32 lowercase hex on every platform), collision-resistant (128 bits),
 // and independent of project paths. Namespaced by adapter so another source can never collide.

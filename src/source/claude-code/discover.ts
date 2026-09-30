@@ -5,7 +5,7 @@ import { homedir } from "node:os";
 import { basename, dirname, join } from "node:path";
 import type { Subagent } from "./types.ts";
 
-export const claudeHome = (): string => process.env.CLAUDE_CONFIG_DIR || join(homedir(), ".claude");
+export const claudeHome = (env: NodeJS.ProcessEnv = process.env): string => env.CLAUDE_CONFIG_DIR || join(homedir(), ".claude");
 
 export interface SessionRef {
   sessionId: string; // the main file's name

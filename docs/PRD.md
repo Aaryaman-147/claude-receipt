@@ -53,6 +53,8 @@ Running `claude-receipt` in a project directory prints a receipt for the current
 
 It must render correctly with or without colour (`NO_COLOR`), in narrow terminals, and on Windows terminals.
 
+As built (M3): 40 columns (down to 28 on narrow terminals), ASCII only apart from user-supplied names, ANSI bold/dim only on a TTY without `NO_COLOR`. Every metric shows its provenance (plain = recorded, ` *` = computed, `~` = estimated) with a legend. Metrics that are unavailable are left out and counted ("N metrics unavailable, not shown"). A live session is marked `LIVE`. Archive status and problems are printed on stderr, never inside the receipt.
+
 ### 5.2 JSON output (MVP)
 
 `--json` prints the Receipt model as JSON: a stable, versioned contract for scripts and the future visual renderer.
@@ -74,17 +76,17 @@ It is driven by the same Receipt model as the terminal. Exports are redacted by 
 
 | Command | Meaning | Phase |
 |---|---|---|
-| `claude-receipt` | Current or most recent session for the current directory, falling back to the most recent session anywhere | MVP |
-| `claude-receipt last` | The most recent completed session anywhere | MVP |
-| `claude-receipt <sessionId>` | A specific session (a unique prefix is enough) | MVP |
-| `claude-receipt --json` | Receipt as JSON (combines with the above) | MVP |
-| `claude-receipt list` | Recent sessions with id, project, date, duration | MVP |
+| `claude-receipt` | Current or most recent session for the current directory, falling back to the most recent session anywhere. "Most recent" = latest recorded activity (`endedAt`, then `startedAt`, then id). May be a live session (shown as LIVE, not archived) | MVP (M3) |
+| `claude-receipt last` | The most recent completed session anywhere (not live, last run closed), same ordering | MVP (M3) |
+| `claude-receipt <sessionId>` | A specific session (a unique prefix is enough; ambiguous prefixes are an error) | MVP (M3) |
+| `claude-receipt --json` | The Receipt JSON contract (combines with the above; `list --json` prints semantic rows) | MVP (M3) |
+| `claude-receipt list` | Recent sessions (default 20, `--limit N`): start time, short id, project, duration, state; sessions whose transcript is gone come from the archive | MVP (M3) |
 | `claude-receipt --project` | Aggregate receipt for the current project | Future (M5) |
 | `claude-receipt --week` / `--month` | Aggregate receipt for a period | Future (M5) |
 | `claude-receipt export` | SVG/PNG receipt | Future (M6) |
 | `claude-receipt wrapped [year]` | Yearly Claude Wrapped | Future (M8) |
 
-Every run archives newly seen or changed sessions as a side effect, so history accumulates from the first use (see `ARCHITECTURE.md` §6).
+Every run archives newly seen or changed sessions as a side effect, so history accumulates from the first use (see `ARCHITECTURE.md` §6). `--no-archive` makes a run read-only; `--redact` applies the export redaction rules (`PRIVACY.md` §6). Exit codes: 0 success, 1 nothing to show (no sessions, no match, ambiguous prefix), 2 usage error.
 
 ## 6. MVP scope
 

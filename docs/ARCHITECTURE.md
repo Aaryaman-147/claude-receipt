@@ -1,6 +1,6 @@
 # Architecture
 
-Status: implemented through M2: `source/claude-code` and the Session (M1a), `analytics`, the Receipt model and its JSON contract, read-only `git` enrichment (M1b), and the local `archive` (M2). Renderers, aggregation and the product CLI are specification only; their field names may be refined when built, but the boundaries may not.
+Status: implemented through M3: `source/claude-code` and the Session (M1a), `analytics`, the Receipt model and its JSON contract, read-only `git` enrichment (M1b), the local `archive` (M2), and the `cli` with its archive sweep and the terminal renderer (M3). Aggregation and the image renderer are specification only; their field names may be refined when built, but the boundaries may not.
 
 ## 1. Data flow
 
@@ -30,12 +30,12 @@ Status: implemented through M2: `source/claude-code` and the Session (M1a), `ana
 | `receipt/` | The Receipt model, metric registry and schema validator | Nothing else (shared by analytics, renderers, archive) |
 | `archive/` | Read and write `ArchiveEntry` files, migrate old schema versions | Receipt, ArchiveEntry |
 | `aggregate/` (future) | `ArchiveEntry[] → PeriodReceipt` | ArchiveEntry |
-| `render/tty` | Receipt → terminal text (layout, colour, `~` markers, microcopy) | Receipt |
+| `render/tty` | Receipt → terminal text (`src/render/tty.ts`): layout, optional ANSI, provenance marks, microcopy | Receipt (and `format`) |
 | `render/json` | Receipt → versioned JSON | Receipt |
 | `render/svg` (future) | Receipt → SVG → PNG | Receipt |
-| `cli` | Argument parsing, choosing a session, wiring the above | Everything, but only as glue |
+| `cli` | `src/cli/`: argument parsing, the archive sweep, choosing a session, wiring the above | Everything, but only as glue |
 
-Shared helpers used by several renderers (duration and number formatting, the microcopy table keyed by metric id) live in one small `format` module, so TTY and SVG say the same things.
+Shared helpers used by several renderers (duration and number formatting, labels and microcopy keyed by metric id, provenance marks and legend) live in one small `format` module (`src/render/format.ts`), so TTY and SVG say the same things. Export redaction (`PRIVACY.md` §6) is a pure Receipt → Receipt transform (`src/receipt/redact.ts`) shared by `--redact` in text and JSON.
 
 **Rules:**
 
@@ -186,9 +186,15 @@ What that means for each kind of session:
 
 **Contents guarantee:** an ArchiveEntry contains the Receipt (minus `session.title`), a size/mtime fingerprint and hashes, and nothing else; `validateEntry` rejects any other field. See `PRIVACY.md` §5.
 
+**The sweep (M3, `src/cli/sweep.ts`).** Every CLI run (unless `--no-archive`):
+1. Reads the archive once (`listArchive`) and the live-session list.
+2. For each Claude Code project directory: if every session in it matches its archived fingerprint (`source.bytes` and `source.mtimeMs` from `stat`, no parsing) and none is live, the project is **skipped** and its archived Receipts are used.
+3. Otherwise the **whole project** is parsed (fork detection needs every sibling), and Receipts (with git facts) are built and written only for sessions whose fingerprint changed or that are live; unchanged siblings reuse their archived Receipt. `writeReceipt` decides: live sessions are rejected, identical content is unchanged, growth is an update, anything else is a conflict (§6 above). The sweep never overrides those rules.
+4. Archived sessions whose transcript is gone join the candidate pool from the archive.
+
+Write failures (e.g. permissions) stop further writes for that run and are reported; the run continues read-only. Conflicts, unreadable entries and non-live rejections are reported on stderr. A session archived by an older generator whose transcript hasn't changed stays as archived (it is skipped by fingerprint): recomputation is never silent, and the CLI notes when the receipt it shows differs from the archived one.
+
 **Deliberately deferred:**
-- The sweep ("every CLI run archives new or changed, non-live sessions") belongs to the CLI (M3). `src/dev/archive.ts` does it for development.
-- Skipping the parse for unchanged transcripts (fingerprint pre-check): an optimization for the CLI sweep.
 - Explicit recomputation of archived entries with a newer generator, and entry migrations beyond v1.
 - Deletion, pruning and retention: only "delete the directory" today; a `claude-receipt archive --purge` may come later.
 - Archive-assisted fork detection for forks whose parent transcript is gone: it would need call identifiers in the archive, which the archive deliberately doesn't store.

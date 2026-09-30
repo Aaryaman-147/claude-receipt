@@ -10,10 +10,14 @@
   "scripts": {
     "test": "node --test \"test/**/*.test.ts\" \"test/**/*.test.mjs\"",
     "typecheck": "tsc -p .",
+    "receipt": "node src/cli/main.ts",
     "dev:parse": "node src/dev/parse.ts"
   },
   "devDependencies": {
     "@types/node": "26.6.3",
     "typescript": "7.0.2"
+  },
+  "bin": {
+    "claude-receipt": "bin/claude-receipt.js"
   }
 }
