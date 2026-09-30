@@ -16,8 +16,8 @@ Privacy is a defining product property, not a setting. Claude Receipt reads some
 | Path | Why | Handling |
 |---|---|---|
 | `~/.claude/projects/*/*.jsonl` and `*/<sessionId>/subagents/*.jsonl` | Session and subagent transcripts, the primary source | Streamed. Only whitelisted fields are extracted (see §3). |
-| `~/.claude/projects/*/<sessionId>/subagents/*.meta.json` | Subagent type and model | Only `agentType`, `model`. Never `description` (free text). |
-| `~/.claude/sessions/*.json` | Detecting live sessions (`sessionId`, `cwd`, `startedAt`, `status`) | Only those fields, plus a check that the PID is running (entries go stale after crashes). Never the `*.key` files beside them. |
+| `~/.claude/projects/*/<sessionId>/subagents/*.meta.json` | Subagent type, model and parent call | Only `agentType`, `model`, `toolUseId` are used. `description` (free text) is parsed with the file but never used or kept. |
+| `~/.claude/sessions/*.json` | Detecting live sessions | Only `pid` and `sessionId` are used, plus a check that the PID is running (entries go stale after crashes). Never the `*.key` files beside them. |
 | `~/.claude/history.jsonl` | Future: long-range activity timestamps | Only `timestamp`, `project`, `sessionId`. Never `display` or `pastedContents`. |
 | `git` in a session's `cwd` | Commits in the session window | Read-only commands. SHAs, timestamps, numstat, a Co-Authored-By boolean. |
 
@@ -33,6 +33,21 @@ Some content has to pass through memory to compute a number. It's used and immed
 | Tool output (stdout/stderr) | Nothing by default. Future: test outcome parsing | No |
 | Claude response text | Nothing by default. Opt-in: recurring phrases | No (never archived; see §5) |
 | `ai-title` | Receipt header in the terminal | Displayed locally. **Not archived.** Redacted in exports. |
+| `custom-title`, `agent-name` records (Claude Desktop) | Nothing | No: read no further than their `type`, counted as unknown-record warnings |
+
+`~/.claude` can be relocated with `CLAUDE_CONFIG_DIR`; Claude Receipt reads the same files there.
+
+### What the normalized Session retains (M1a)
+
+The Session (`src/source/claude-code/types.ts`) is the only output of the parser. It keeps exactly:
+
+- **Identifiers:** session id; Claude's opaque API `message.id` per API call (`apiCalls[].key`); tool-use ids; subagent `agentId` and the parent tool-use id. These are random server/client ids with no content. The archive (M2) will store API call ids **hashed** (§5); the Session itself keeps them raw because deduplication needs them.
+- **Paths and names (meta, redacted in exports):** project `cwd` (plus any other `cwd`s), project name, **file paths** of Read/Write/Edit/NotebookEdit calls, **git branch names**, tool names (including MCP server/tool names), **slash-command names** (e.g. `/model`, never arguments), **skill names**, **agent-type names**, subagent model names, model names, Claude Code versions, `entrypoint`, source file paths.
+- **Numbers and enums:** timestamps, token counts, cost-state totals, durations, line counts, prompt character lengths, run boundaries, statuses, stop reasons, service tier, command `program` (allowlisted names only, otherwise `other`) and `category`, git command kind.
+- **Title:** Claude Code's `ai-title`, display only.
+- **Diagnostics:** warning codes such as `unknown-record-type:<type>` (type names only).
+
+It never keeps prompt text, response or thinking text, raw commands, command arguments, stdout/stderr, file contents, patches, `meta.json` descriptions, custom titles or agent names. Record uuids are used internally for fork detection and dropped. `test/source/claude-code.test.ts` asserts this for every fixture.
 
 ## 4. What is never read
 

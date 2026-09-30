@@ -115,7 +115,7 @@ Privacy levels: **none** (numbers only), **meta** (names, paths or ids, which ar
 
 ### `prompts.count`: Prompts · exact · MVP
 - **Source:** T main file `user` records (M0 §7): `promptSource` `typed` or `sdk`, or a `<command-message>` record with `origin.kind: "human"` (a slash command or skill that sends a prompt).
-- **Calculation:** count, with `detail.byKind`. Excluded: tool results, `isMeta`, sidechain (subagent) prompts, local slash commands (`<command-name>`/`<local-command-*>`), user `!` shell records, task notifications. Reference: `promptKind()` in `scripts/m0/rules.mjs`.
+- **Calculation:** count, with `detail.byKind`. Excluded: tool results, `isMeta`, sidechain (subagent) prompts, local slash commands (`<command-name>`/`<local-command-*>`), user `!` shell records, task notifications. Reference: `promptKind()` in `src/source/claude-code/scan.ts`.
 - **Limitations:** the `slash` shape has one observed sample. Queued-while-busy prompts are untraced (M0 §7).
 - **Privacy:** none (the text is not kept; the character length is kept in memory for lore).
 
@@ -157,9 +157,9 @@ Privacy levels: **none** (numbers only), **meta** (names, paths or ids, which ar
 
 ### `commands.count` / `commands.topPrograms`: Shell commands · exact (count) / derived (programs) · MVP
 - **Source:** T `Bash` / `PowerShell` tool calls.
-- **Calculation:** program = the first word of the command after stripping env assignments and `cd …&&`. Compound commands count their first program.
-- **Limitations:** pipelines and scripts are simplified.
-- **Privacy:** the raw command is **never** stored. Only the program name and category are kept.
+- **Calculation:** program = the first word of the first meaningful segment, after stripping env assignments, `sudo`/`time`-style prefixes and `cd …&&` (`classifyCommand` in `src/source/claude-code/commands.ts`). Only programs on a fixed allowlist are kept by name; anything else (custom scripts, internal tools) is `other`.
+- **Limitations:** pipelines and scripts are simplified; commands that are only custom scripts all count as `other`.
+- **Privacy:** the raw command is **never** stored. Only the allowlisted program name and category are kept.
 
 ### `tests.runs`: Test runs · heuristic · MVP
 - **Source:** T (command classification).

@@ -8,21 +8,26 @@ Claude Receipt turns Claude Code sessions into receipts: hard stats, coding stat
 
 ## Status
 
-M0 (format verification) done: see `docs/research/M0_FINDINGS.md`. No application code yet. Do not scaffold, install dependencies or write the production parser unless the current task explicitly asks for it.
+- M0 (format verification): done, see `docs/research/M0_FINDINGS.md`.
+- M1a (source adapter + normalized Session in `src/source/claude-code/`): implemented, see `docs/research/M1_FINDINGS.md`.
+- M1b onwards (analytics, Receipt, CLI, archive, renderers): not started. Don't build them unless the current task asks for it.
 
 ## Commands
 
-No dependencies and no `package.json` yet. Node ≥ 22.
+Node ≥ 24 runs the TypeScript sources directly (no build step). Dev-only dependencies: `typescript`, `@types/node` (`npm install`). No runtime dependencies. No linter is configured.
 
 | Command | What it does |
 |---|---|
-| `node --test "test/*.test.mjs"` | All tests: M0 rules on fixtures + fixture safety |
-| `node scripts/m0/inspect.mjs` | Probe the real `~/.claude/projects`: counts, reconciliation, path rule. Metadata only |
+| `npm test` | All tests: parser and command classification (`test/source/`), fixture safety |
+| `npm run typecheck` | `tsc` in strict mode, no emit |
+| `node src/dev/parse.ts <main.jsonl>...` | Parse transcripts together (forks detected among them) and print Session JSON |
+| `node src/dev/parse.ts --session <id\|prefix>` / `--all` | Same for local sessions under `CLAUDE_CONFIG_DIR` or `~/.claude` |
+| `node src/dev/parse.ts … --summary` | Counts only. **Use this on real sessions**; full Session JSON contains paths and titles |
 | `node scripts/m0/build-fixtures.mjs` | Regenerate `fixtures/claude-code/2.1.283` from the M0 lab sessions (only on the machine that has them) |
 | `node scripts/anonymize-fixture.mjs <out-dir> <in.jsonl>…` | Anonymize transcripts into fixture candidates (review before committing) |
 | `node scripts/m0/watch-transcript.mjs <sessionId> [seconds]` | Sample a live transcript for partial writes |
 
-`scripts/m0/rules.mjs` is the tested reference for parsing rules (deduplication, prompt kinds, tolerant JSONL, reconciliation). M1 ports it; don't diverge from it silently.
+`src/source/claude-code/` is the only code that reads Claude Code's format. Its rules are pinned by `test/source/`; change a rule only together with its test and the findings doc.
 
 ## Architectural boundaries (do not cross)
 

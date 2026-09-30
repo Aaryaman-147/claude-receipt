@@ -1,6 +1,6 @@
 # Architecture
 
-Status: proposed and approved in direction; not yet implemented. The types below are specifications, not code. Field names may be refined in M1, but the boundaries may not.
+Status: `source/claude-code` and the Session model are implemented (M1a). Everything downstream (analytics, Receipt, archive, renderers, CLI) is specification only; its field names may be refined when built, but the boundaries may not.
 
 ## 1. Data flow
 
@@ -45,74 +45,36 @@ Shared helpers used by several renderers (duration and number formatting, the mi
 
 ## 3. Normalized Session model
 
-Plain, serializable data. **It contains no free text:** no prompts, responses, file contents, command strings or tool output. The single exception is the optional Claude Code–generated `title`, which is display-only and never archived (`PRIVACY.md` §3).
+**Source of truth: [`src/source/claude-code/types.ts`](../src/source/claude-code/types.ts)** (implemented in M1a, `SESSION_SCHEMA_VERSION = 1`). This section summarizes it; the file wins if they disagree.
 
-```ts
-type Provenance = "exact" | "derived" | "heuristic";
+Plain, serializable data (a Session round-trips through `JSON.stringify` unchanged). **It contains no free text:** no prompts, responses, file contents, patches, command strings or tool output. The single exception is the optional Claude Code–generated `title`, which is display-only and never archived (`PRIVACY.md` §3). Every retained field is listed in `PRIVACY.md` §3.
 
-interface Session {
-  id: string;                        // Claude Code sessionId (UUID) = main file name
-  source: { adapter: "claude-code"; files: SourceFile[]; clientVersions: string[] };  // main file + subagents/*.jsonl
-  entrypoint: string;                // "cli" (human) | "sdk-cli" (headless/automation) | …
-  project: { cwd: string; name: string; gitBranches: string[] };   // cwd from records, never from dir names
-  startedAt: string;                 // ISO UTC, first timestamped record
-  endedAt: string;                   // ISO UTC, last timestamped record
-  runs: Run[];                       // run boundaries (each resume = a run); prompts, calls and tool calls carry their run index
-  isLive: boolean;                   // a sessions/<pid>.json names this session AND that PID is running
-  isComplete: boolean;               // false if truncated tail or no cost-state (live or killed)
-  fork?: { parentSessionId: string; inheritedApiCalls: number };   // detected by uuid overlap (M0 §1)
-  title?: string;                    // ai-title (see PRIVACY.md: treated as sensitive in exports)
+| Field | Meaning |
+|---|---|
+| `schemaVersion`, `id` | Model version; Claude Code sessionId (= main file name) |
+| `source` | `main` and `subagents` files (path, bytes read, mtime), `clientVersions` |
+| `entrypoint` | `cli`, `sdk-cli`, `claude-desktop`, …; headless sessions are included, filtering is possible later |
+| `project` | `cwd` from records (never decoded from dir names), `key` (case-insensitive grouping key for Windows paths), `name`, `otherCwds`, `gitBranches` |
+| `startedAt`, `endedAt` | Own records only: a fork's copied history is excluded |
+| `status` | `live` (running PID), `complete`, `empty`, `truncatedTail`, `badLines` |
+| `fork` | `{ parentSessionId, inheritedRecords, inheritedApiCalls }` or `null` |
+| `title` | `ai-title`, display only |
+| `runs[]` | `{ index, startedAt, endedAt, closed, costState }`: one per process run; the basis for a future `--run` |
+| `prompts[]` | `{ ts, run, kind: typed \| sdk \| slash, chars }` |
+| `turns[]` | `{ ts, run, durationMs, messageCount }` from `turn_duration` |
+| `apiCalls[]` | `{ key, ts, run, agentId, model, final, stopReason, serviceTier, speed, usage }`, one per `message.id`, usage from the last line, own calls only |
+| `toolCalls[]` | `{ id, name, ts, run, agentId, promptIndex, status: ok \| error \| no-result, interrupted, file, command, agentType, skill }` |
+| `toolCalls[].file` | `{ path, op: read \| create \| update \| edit \| write, added, removed }`; line counts `null` when unknown |
+| `toolCalls[].command` | `{ shell, program, category, git }`: `program` from a fixed allowlist, else `other`; never the command string |
+| `slashCommands[]` | `{ ts, run, name }`, name only (e.g. `/model`), never arguments |
+| `subagents[]` | `{ agentId, agentType, model, parentToolUseId }` from `meta.json` (never `description`) |
+| `costState` | Last cumulative `cost-state` snapshot (includes subagents; for forks, inherited usage) |
+| `reconciliation` | `Finding[]` (info / warning) or `null` without a cost-state |
+| `warnings[]` | `{ code, count }`, e.g. `unknown-record-type:custom-title`, `truncated-tail`, `synthetic-message` |
 
-  prompts: { ts: string; chars: number; kind: "typed" | "sdk" | "slash" }[];   // M0 §7 rule
-  turns: { ts: string; durationMs: number; messageCount: number }[];           // from turn_duration
-  apiCalls: ApiCall[];               // deduplicated by message.id, last line wins; excludes inherited fork copies
-  toolCalls: ToolCall[];
-  slashCommands: { ts: string; name: string }[];
-  interruptions: number;
-  subagents: { agentId: string; agentType: string; model?: string; apiCalls: number }[];  // from meta.json (never `description`)
-  costState?: CostState;             // last cost-state record, if any (cumulative; includes subagents; includes inherited usage for forks)
-  warnings: string[];                // e.g. "unknown record type: foo (3x)", reconciliation findings
-}
+Every prompt, API call, tool call, turn and slash command carries its `run` index, and subagent items carry `agentId`, so per-run and per-agent views can be derived later without re-parsing.
 
-interface SourceFile { path: string; sizeBytes: number; mtimeMs: number }
-
-interface ApiCall {
-  messageId: string;
-  ts: string;
-  model: string;
-  isSidechain: boolean;
-  usage: { input: number; output: number; cacheRead: number; cacheWrite: number; thinking: number };
-  serviceTier?: string;
-  speed?: string;
-}
-
-interface ToolCall {
-  id: string;
-  ts: string;
-  name: string;                      // "Bash", "Edit", "Read", "mcp__x__y", ...
-  isError: boolean;
-  interrupted: boolean;
-  promptIndex: number;               // which user prompt this call belongs to
-  file?: { path: string; op: "read" | "create" | "update" | "edit"; added: number; removed: number };
-  command?: { program: string; category: CommandCategory };   // never the raw command string
-  git?: { kind: "commit" | "push" | "other" };                // from command classification
-}
-
-type CommandCategory = "test" | "build" | "install" | "git" | "run" | "search" | "fs" | "other";
-
-interface CostState {
-  totalCostUSD: number;
-  totalDurationMs: number;
-  totalApiDurationMs: number;
-  totalToolDurationMs: number;
-  linesAdded: number;
-  linesRemoved: number;
-  hasUnknownModelCost: boolean;
-  byModel: Record<string, { input: number; output: number; thinking: number; cacheRead: number; cacheWrite: number; webSearches: number; costUSD: number }>;
-}
-```
-
-The Bash command string is read from the transcript in memory **only** to classify it (`program`, `category`, `git.kind`) and is then discarded.
+Implementation: `scan.ts` streams one file and reduces each record to text-free drafts (the only code that reads raw records); `session.ts` assembles Sessions, detects forks and reconciles; `discover.ts` finds files and live sessions; `commands.ts` classifies shell commands; `index.ts` is the public surface. `src/dev/parse.ts` is a development entry point, not the product CLI.
 
 ## 4. Receipt model
 
@@ -208,14 +170,14 @@ interface ArchiveEntry {
 Claude Code's transcript format is undocumented and changes between versions (this machine: 2.1.283).
 
 1. **One adapter, tolerant parsing.** Unknown record types and unknown fields are ignored and counted into `Session.warnings`. They never crash the parser.
-2. **Zod (or equivalent) only at the boundary**, validating just the fields we use, so a changed field fails loudly as a warning plus a `null` metric rather than as a wrong number.
+2. **Narrow guards at the boundary.** `scan.ts` reads each field it uses through small type guards (`str`, `num`, `obj`, `arr`): a field with an unexpected type becomes `null`/0 for that item rather than crashing or leaking through. No schema library: the standard library covers it.
 3. **Versioned fixtures**: `fixtures/claude-code/<version>/<scenario>.jsonl`. When a new Claude Code version changes something, add a fixture for it; old fixtures stay and must keep passing.
 4. **Record the `version` field** per session (`clientVersions`) so format-dependent logic can branch if it must.
 5. **Reconciliation as a canary**: when `cost-state` is present, compare our token sums per model to it. A mismatch becomes a warning, which is the earliest signal that the format changed.
 
 ## 8. Key parsing rules (verified in M0)
 
-Evidence and status for each rule: `docs/research/M0_FINDINGS.md`. Reference implementation and tests: `scripts/m0/rules.mjs`, `test/m0-rules.test.mjs`.
+Evidence and status for each rule: `docs/research/M0_FINDINGS.md`; limitations and real-data notes: `docs/research/M1_FINDINGS.md`. Implementation: `src/source/claude-code/`; tests: `test/source/`.
 
 - **Session = one main file.** `--resume` and `--continue` append to it. `--fork-session` creates a new file containing a copy of the parent's history.
 - **Subagents** live in `<sessionId>/subagents/agent-<agentId>.jsonl` (+ `.meta.json`), with the parent's sessionId and `isSidechain: true`. They are part of the session. The parent `cost-state` includes them.
@@ -227,13 +189,16 @@ Evidence and status for each rule: `docs/research/M0_FINDINGS.md`. Reference imp
 - **Tool errors**: `tool_result.is_error === true`. `toolUseResult` is then a plain string with no structured exit code.
 - **Line counts** come from `Edit` `structuredPatch` lines (`+` and `-` prefixes) and `Write` (`create`: all lines of `content`; `update`: from `structuredPatch`). They match `cost-state` totals exactly.
 - **Project identity** comes from the `cwd` field only. Directory names are lossy (every non-`[A-Za-z0-9]` → `-`) and truncated with a hash suffix above 200 characters. Group `cwd`s case-insensitively on Windows.
-- **Partial final line**: drop it, flag it, set `isComplete = false`. A bad line mid-file is skipped and counted.
+- **Partial final line**: drop it, flag it, set `status.complete = false`. A bad line mid-file is skipped and counted. Reads are bounded to the file size at open, so lines appended during parsing are ignored.
+- **Runs:** a `cost-state` closes a run; a second one with no timestamped record since updates the same run (interactive exits write two); timestamped records after the last one form an open run.
+- **Unknown record types** are read no further than their `type`, counted in `warnings` as `unknown-record-type:<type>`, and change nothing else. `<synthetic>` assistant messages (client-generated API error notices, zero usage) are skipped and counted as `synthetic-message`.
 - **Never read** attachment payloads (including `credential_org`), `queue-operation.content`, `last-prompt`, or subagent `meta.json` `description`.
 
 ## 9. Technology
 
-- **TypeScript on Node** (minimum version pinned in M1; target the current LTS).
-- Tests: the built-in `node:test` runner unless M1 finds a concrete reason otherwise.
+- **TypeScript on Node ≥ 24.** Node runs the `.ts` sources directly (type stripping), so there is no build step during development; `tsconfig.json` uses `erasableSyntaxOnly` to keep the code strippable. `tsc` only type-checks (`noEmit`). Packaging for npm will need a build step, decided when the CLI ships.
+- Runtime dependencies: none so far. Dev-only: `typescript`, `@types/node`.
+- Tests: the built-in `node:test` runner.
 - Terminal: `picocolors` and `string-width` (exact column alignment including wide characters).
 - Future visual renderer: Satori (JSX → SVG) and `@resvg/resvg-js` (SVG → PNG), with no headless browser. Fonts are bundled.
 - Every dependency must be justified in the PR that adds it.

@@ -46,35 +46,45 @@ Each item gets a short written finding in `M0_FINDINGS.md` and at least one fixt
 - [x] **Minimal fixtures** for edge cases: partial last line, duplicate message ids, unknown record type, empty file, session with zero tool calls, an Edit with `replaceAll`, a Write `create` versus `update`, a tool error. Most are real anonymized sessions rather than hand-written, which is stronger evidence.
   - Also added: resumed, forked, subagent, killed, missing final newline, prompt kinds.
   - Not done: **an interruption**, because its on-disk shape wasn't observed (UNKNOWN). `prompt-kinds.jsonl` contains an *assumed* interruption record that must be replaced by a real sample.
-- [x] **Layout:** `fixtures/claude-code/<version>/<scenario>.jsonl` (subagent fixture mirrors Claude Code's `<sid>/subagents/` layout). Expectations live in `test/m0-rules.test.mjs`.
-  - Moved to M1: `<scenario>.expected.json` (the expected Session summary). It depends on the M1 Session model.
+- [x] **Layout:** `fixtures/claude-code/<version>/<scenario>.jsonl` (subagent fixture mirrors Claude Code's `<sid>/subagents/` layout). Expectations were first pinned by M0 tests, now ported to `test/source/` (M1a).
+  - `<scenario>.expected.json` snapshots were replaced in M1a by per-behaviour assertions and invariant tests.
   - Human review of committed fixtures is still required before the first commit.
 
 **Done when:** every verification has a finding, and the fixtures cover every listed scenario.
 
 ---
 
-## M1: Parser, Session, analytics, `--json`
+## M1a: Source adapter, normalized Session
 
-- [ ] Project setup: TypeScript, minimum Node version pinned, `node:test`, lint/format. Commands added to `CLAUDE.md`.
-- [ ] `source/claude-code` produces a `Session` (`ARCHITECTURE.md` §3) from a transcript path via streaming, with no text content retained.
-- [ ] All M0 fixtures parse to their `.expected.json` (written in M1 from the M0 test expectations). Unknown records produce warnings, not failures.
-- [ ] M0 rules ported from `scripts/m0/rules.mjs` with the same tests:
-  - tolerant JSONL reading;
-  - last-line-wins deduplication by `message.id`;
+**Status: done (2026-10-01).** Notes, limitations and measurements: `docs/research/M1_FINDINGS.md`. The UNKNOWN and LIMITATION items listed there are accepted as documented limitations and are not to be resolved speculatively; revisit only if a product requirement makes one of them important.
+
+- [x] Project setup: TypeScript (type-check only, Node runs `.ts` directly), Node ≥ 24 pinned in `package.json`, `node:test`. Commands added to `CLAUDE.md`. No linter or formatter is configured; `tsc --strict` is the static check.
+- [x] `source/claude-code` produces a `Session` (`src/source/claude-code/types.ts`, `ARCHITECTURE.md` §3) via streaming, with no text content retained.
+- [x] M0 rules ported into production code with tests (`test/source/`); the M0 reference module and its tests were removed:
+  - tolerant JSONL reading, bounded to the file size at open;
+  - last-line-wins deduplication by `message.id`, within and across files;
   - `promptKind`;
-  - `reconcile` (info/warning).
-- [ ] Sessions include their `subagents/*.jsonl` files.
-- [ ] Forks are detected by uuid / `message.id` overlap. Inherited API calls are excluded, and the fork's `cost-state` is not used for its totals.
+  - `reconcile` (info/warning), including line counts.
+- [x] Sessions include their `subagents/*.jsonl` files and `meta.json` (agentType, model, parent tool call).
+- [x] Forks are detected by uuid overlap among the sessions parsed together. Inherited records and API calls are excluded from the fork's own activity.
+- [x] Run boundaries preserved (`Session.runs`, `run` index on every item), including the interactive double-cost-state rule.
+- [x] `entrypoint` preserved; headless sessions included.
+- [x] Live requires a running PID, not just a `sessions/*.json` entry.
+- [x] Discovery never decodes directory names; `project.key` groups `cwd`s case-insensitively on Windows.
+- [x] Unknown record types produce warnings, not failures.
+- [x] Expected results are pinned by per-behaviour assertions and invariant tests (repeat-idempotence, truncation at every byte, no text in any Session) instead of `.expected.json` snapshots.
+- [x] A test asserts that Session JSON for every fixture contains none of the fixture's placeholder text.
+- [x] Performance: a 50 MB transcript parses in well under 3 s with bounded memory (measured 0.37 s, see M1 findings).
+- [x] Development entry point `src/dev/parse.ts` (Session JSON, or counts only with `--summary`). Not the product CLI.
+
+## M1b: Analytics, Receipt JSON, CLI commands
+
 - [ ] Token and cost source selection follows `METRICS.md`: `cost-state` for completed non-fork sessions, otherwise the transcript (derived).
-- [ ] `isLive` requires a running PID, not just a `sessions/*.json` entry (stale entries exist).
-- [ ] Session discovery never decodes directory names, and groups by `cwd` case-insensitively on Windows.
 - [ ] `analytics` computes every metric marked **MVP** in `METRICS.md` (except git metrics) with correct provenance. Unavailable inputs produce `null` + `unavailableReason`, and a test asserts no MVP metric is ever `0` because an input was missing.
-- [ ] Reconciliation findings follow the M0 rule: transcript below `cost-state` = info, above or model only in transcript = warning. Exact equality is expected for headless sessions.
 - [ ] Pricing table file with a date, used only when `cost-state` is absent. Tested against `cost-state.costUSD` on fixtures.
-- [ ] `claude-receipt --json`, `last`, `<sessionId>` (prefix), `list`. JSON output snapshot-tested per fixture. `schemaVersion: 1`.
-- [ ] A grep-style test asserts that JSON output for a fixture contains none of the fixture's placeholder text strings.
-- [ ] Performance: a 50 MB transcript is parsed in under 3 s on a typical laptop, with memory bounded (streaming).
+- [ ] Receipt model (`ARCHITECTURE.md` §4) and `render/json` with `schemaVersion: 1`.
+- [ ] `claude-receipt --json`, `last`, `<sessionId>` (prefix), `list`. JSON output snapshot-tested per fixture.
+- [ ] A test asserts that Receipt JSON for a fixture contains none of the fixture's placeholder text.
 
 ## M2: Local archive
 

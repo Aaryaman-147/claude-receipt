@@ -96,7 +96,7 @@ const forbidden = [
   /[A-Za-z]:\\\\Users\\\\/i, /\/(Users|home)\//, /[\w.+-]+@[\w-]+\.[A-Za-z]{2,}/, /sk-ant-/i, /AKIA[0-9A-Z]{8}/, /Bearer\s/i,
   /OneDrive|AppData/i, /claude-receipt/i,
 ];
-const ENUM_KEYS = new Set(["type", "subtype", "role", "model", "stop_reason", "version", "entrypoint", "userType", "permissionMode", "promptSource", "turnOrigin", "kind", "service_tier", "speed", "level", "operation", "mode", "status", "agentType", "requestShape", "resolvedModel", "inference_geo", "canonicalModel", "provider", "costBasis", "name", "_expect"]);
+const ENUM_KEYS = new Set(["type", "subtype", "role", "model", "stop_reason", "version", "entrypoint", "userType", "permissionMode", "promptSource", "turnOrigin", "kind", "service_tier", "speed", "level", "operation", "mode", "status", "agentType", "subagent_type", "requestShape", "resolvedModel", "inference_geo", "canonicalModel", "provider", "costBasis", "name", "_expect"]);
 const SAFE = [
   /^[x\n]*$/,                                                    // blanked text
   /^[+\- ]x*$/,                                                  // blanked patch line with its prefix
@@ -106,6 +106,7 @@ const SAFE = [
   /^00000000-0000-4000-8000-[0-9a-f]{12}$/, /^(msg|toolu|req|srvtoolu)_fixture[0-9a-f]{12}$/, /^a[0-9a-f]{12}$/, // fake ids
   /^C:\\fixture\\project\d*(\\file\d+(\.[A-Za-z0-9]+)?)?$/,      // fake paths
   /^([a-z]+ ){1,2}x$/,                                             // replaced commands
+  /^branch-\d+$/,                                                  // fake git branch names
 ];
 const offenders = (v, key = "", path = "") => {
   if (typeof v === "string") {

@@ -12,9 +12,8 @@
 | **UNKNOWN** | Not safely or reliably determined |
 
 Evidence tools:
-- `scripts/m0/inspect.mjs`: runs over the real `~/.claude/projects`; prints counts, reconciliation and path-rule checks.
 - `scripts/m0/watch-transcript.mjs`: samples a transcript while it's being written.
-- `test/m0-rules.test.mjs`: pins each behaviour on anonymized fixtures.
+- During M0, a probe script and a reference rule module with its own tests were used. In M1a they were replaced by the production parser (`src/source/claude-code/`), its tests (`test/source/`) and the development entry point `node src/dev/parse.ts --all --summary`, which prints the same metadata-only view. The originals are in git history (commit `9b061fb`).
 
 ---
 
@@ -63,7 +62,7 @@ Evidence tools:
 | `~/.claude/sessions/<pid>.json` lists running sessions (`sessionId`, `cwd`, `kind`, `entrypoint`, `status`, `startedAt`, `updatedAt`, `procStart`). **It goes stale when a process is killed**: the killed run's file remained with `status: "busy"` although the PID was dead. | CONFIRMED |
 | Headless runs are registered as `kind: "interactive"` with `entrypoint: "sdk-cli"`. Normal CLI sessions have `entrypoint: "cli"`. | CONFIRMED |
 
-**Parser rules** (implemented in `scripts/m0/rules.mjs`, tested):
+**Parser rules** (implemented in `src/source/claude-code/jsonl.ts` and `discover.ts`, tested in `test/source/`):
 - Read a snapshot. A final line that fails to parse is dropped and flagged `truncatedTail`. An unparseable line elsewhere is skipped and counted. A missing final newline on a valid line is fine.
 - `isLive` = a `sessions/*.json` entry for the sessionId **and** its PID is running (optionally cross-checked with `procStart`). File existence alone is wrong.
 - Never archive a live session as final. Re-archive when the fingerprint changes.
@@ -96,7 +95,7 @@ Evidence tools:
 - Key = `message.id`, falling back to `requestId`, then the record `uuid`. **The last line wins** within a file.
 - Across files (forks), deduplicate globally by the same key, so each API call is counted once.
 - `message.id` alone is sufficient: it's a server-issued, globally unique id, and a composite key (`message.id` + `requestId`) would add nothing, since both are copied together into forks.
-- Deduplication rule and reasons: `scripts/m0/rules.mjs`. Tests: `ordinary`, `subagent`, `forked`.
+- Deduplication rule: `src/source/claude-code/scan.ts` (within a file) and `session.ts` (across files). Tests: `test/source/claude-code.test.ts`, on the `ordinary`, `subagent` and `forked` fixtures.
 
 ## 6. cost-state reconciliation
 
@@ -137,7 +136,7 @@ Observed `user` record shapes across all transcripts (tags and flags only):
 | `isMeta: true` text (injected context) | no |
 | `isSidechain: true` (the subagent's task prompt) | no |
 
-Rule: `promptKind()` in `scripts/m0/rules.mjs`, pinned by `prompt-kinds.jsonl`. Status: **CONFIRMED** for typed, sdk, tool_result, isMeta, command/local-command, bash, task-notification and sidechain. **INFERRED** for `slash` (one sample).
+Rule: `promptKind()` in `src/source/claude-code/scan.ts`, pinned by `prompt-kinds.jsonl`. Status: **CONFIRMED** for typed, sdk, tool_result, isMeta, command/local-command, bash, task-notification and sidechain. **INFERRED** for `slash` (one sample).
 
 **UNKNOWN:**
 - The on-disk shape of a user interruption. `[Request interrupted…]` wasn't observed in any transcript. The fixture record for it is an **assumption**, not an observation, and must be replaced by a real sample.

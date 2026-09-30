@@ -25,6 +25,7 @@ const ENUMS = Object.fromEntries(Object.entries({
   mode: "normal content",
   status: "async_launched completed failed",
   agentType: "general-purpose Explore Plan",
+  subagent_type: "general-purpose Explore Plan",
   requestShape: "background foreground",
   inference_geo: "not_available",
   provider: "firstParty",
@@ -61,7 +62,11 @@ const DROP_ATTACHMENTS = /credential|org|oauth|auth/i;
 export const blank = (s) => s.replace(/[^\n]/g, "x");
 
 export function createAnonymizer() {
-  const ids = new Map(), paths = new Map(), cwds = new Map();
+  const ids = new Map(), paths = new Map(), cwds = new Map(), branches = new Map();
+  const fakeBranch = (v) => {
+    if (!branches.has(v)) branches.set(v, `branch-${branches.size + 1}`);
+    return branches.get(v);
+  };
   let n = 0;
   const fakeId = (v) => {
     if (!ids.has(v)) {
@@ -102,6 +107,7 @@ export function createAnonymizer() {
       if (key === "timestamp" || key === "startedAt" || TIMESTAMP.test(v)) return TIMESTAMP.test(v) ? v : blank(v);
       if (ID_KEYS.has(key) || ID_SHAPE.test(v)) return fakeId(v);
       if (key === "cwd") return fakeCwd(v);
+      if (key === "gitBranch") return v ? fakeBranch(v) : v;
       if (PATH_KEYS.has(key)) return fakePath(v);
       if (key === "command") return command(v);
       if (key === "name" && parent?.type === "tool_use") return KNOWN_TOOLS.has(v) ? v : v.startsWith("mcp__") ? "mcp__server__tool" : "UnknownTool";
