@@ -79,7 +79,7 @@ Each item gets a short written finding in `M0_FINDINGS.md` and at least one fixt
 
 ## M1b: Analytics, Receipt JSON, git enrichment
 
-**Status: implemented (2026-10-01), awaiting review.** Git enrichment moved here from M4; the product CLI commands moved to M3 (M1b ships a development entry point only).
+**Status: done (2026-10-01).** Git enrichment moved here from M4; the product CLI commands moved to M3 (M1b ships a development entry point only).
 
 - [x] Token and cost source selection follows `METRICS.md`: `cost-state` for completed, non-live, non-fork sessions (exact), otherwise the transcript (derived).
 - [x] `analytics` (`src/analytics/`) computes every metric marked **MVP** in `METRICS.md` with provenance. Unavailable inputs produce `null` + `unavailableReason`; tests assert the null-instead-of-0 cases (killed session, headless turns, git not run, no edits, no tool calls).
@@ -91,15 +91,20 @@ Each item gets a short written finding in `M0_FINDINGS.md` and at least one fixt
 
 ## M2: Local archive
 
-- [ ] `archive/` writes `ArchiveEntry` (`ARCHITECTURE.md` §6) atomically to `~/.claude-receipt/archive/<sessionId>.json` (`CLAUDE_RECEIPT_HOME` respected).
-- [ ] Every CLI run sweeps transcripts and archives new or changed, non-live sessions. An unchanged fingerprint means no rewrite.
-- [ ] Entries whose transcripts were deleted are kept. A test deletes the fixture source and confirms the entry survives and is still readable.
-- [ ] A test confirms that archive files contain no prompt, response, title, patch or command text (checked against fixture placeholders).
-- [ ] `archiveSchemaVersion: 1`, with a migration harness in place (a no-op v1 migration test proving the mechanism).
-- [ ] A corrupt entry is skipped with a warning and never deleted.
+**Status: implemented (2026-10-01), awaiting review.** Design: `ARCHITECTURE.md` §6; privacy boundary: `PRIVACY.md` §5.
+
+- [x] `archive/` (`src/archive/index.ts`) writes `ArchiveEntry` atomically (temp file + rename) to `~/.claude-receipt/archive/<key>.json` (`CLAUDE_RECEIPT_HOME` respected). The key is a hash of the session id, not the raw id.
+- [x] Idempotent: re-archiving identical content (ignoring `generatedAt`) is `unchanged` and not rewritten. A resumed session whose transcript grew replaces its entry; any other difference is a `conflict` that leaves history untouched.
+- [x] Entries whose transcripts were deleted are kept. A test deletes the fixture source and confirms the entry survives and is still readable.
+- [x] Tests confirm that archive files contain no prompt, response, title, patch or command text, and no API-call/message/tool-use/agent ids (checked against fixture placeholders and fake ids). Real-data check: 0 leaks.
+- [x] `archiveSchemaVersion: 1`, with a minimal migration boundary (`migrateEntry`, tested with an injected v1 → v2 step). Newer versions are `unsupported`, never guessed.
+- [x] A corrupt, unsupported or invalid entry is reported by `readArchived` / `listArchive`, never deleted, and never overwritten.
+- Changed from the original plan: hashed API-call keys are **not** archived (the archive holds no call/message ids at all). Consequence: a fork first archived after its parent's transcript was cleaned up can't be recognised as a fork (accepted M1a limitation).
+- Moved to M3: the sweep "every CLI run archives new or changed, non-live sessions" (the CLI owns it; `src/dev/archive.ts` does it for development), and skipping unchanged transcripts by fingerprint.
 
 ## M3: Terminal receipt and CLI
 
+- [ ] Every CLI run sweeps local transcripts and archives new or changed, non-live sessions (`writeReceipt`); unchanged transcripts are skipped by fingerprint. Moved here from M2.
 - [ ] Product CLI: `claude-receipt` (current/most recent session for the directory), `last`, `<sessionId>` (prefix), `list`, `--json` (the M1b Receipt JSON). Moved here from M1b.
 - [ ] `render/tty` renders the Receipt as a narrow receipt (~40 columns): header, Hard stats, Coding stats, Session lore, footer microcopy, and a `~` legend when heuristics are present.
 - [ ] Null metrics are omitted, never shown as `0`. Heuristic values always carry `~`; derived values carry their own distinct mark; exact values carry neither. A test asserts every rendered metric's mark matches its provenance, and a legend explains the marks in use (`METRICS.md` → Rendering rule).

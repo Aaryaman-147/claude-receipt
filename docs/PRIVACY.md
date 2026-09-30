@@ -78,12 +78,16 @@ Location: `~/.claude-receipt/archive/` (overridable via `CLAUDE_RECEIPT_HOME`).
 - model names, tool names, program names and command categories, language names;
 - the most-edited file path;
 - git commit counts, Claude co-authorship counts and line counts for the session window (when available; no SHAs, messages or authors);
-- hashed API call keys (sha256 of Claude's opaque `message.id`, truncated) and a fork's parent session id, used only to avoid double counting forked sessions;
+- a fork's parent session id (`forkOf`), so aggregates don't double count forked sessions;
 - provenance and warnings.
 
-**Never stored**: prompt text, Claude response text, AI titles, thinking content, file contents, patches, raw commands, command output, commit messages, author identities, credentials.
+Around the Receipt, each entry (`ArchiveEntry`, `ARCHITECTURE.md` §6) holds only: the schema version, the entry key (a hash of the session id), first/last write times, a hash of the content, and the transcript's total size in bytes and latest modification time (no paths).
 
-The archive is plain JSON so users can inspect it, and deleting the directory removes everything. A future `claude-receipt archive --purge` may make that explicit.
+**Never stored**: prompt text, Claude response text, AI titles, thinking content, file contents, patches, raw or partial commands, command output, commit messages, author identities, credentials, transcript records, and any API-call, message, request, tool-use or agent id (hashed or not; session ids are the only identifiers). Presentation copy never enters: the Receipt holds semantic values only, and entries with unknown fields are rejected on read.
+
+This is enforced, not just intended: `writeReceipt` archives only validated Receipts and strips the title; `validateEntry` rejects any extra field on read; `test/archive/archive.test.ts` scans archived fixtures for leaked text and ids. The M2 real-data check archived 14 local sessions (into a temporary directory) and found none of 2,176 private transcript strings and none of 3,291 raw telemetry ids in the archive.
+
+The archive is plain JSON so users can inspect it, and deleting the directory removes everything. Claude Receipt never deletes or rewrites entries on its own: malformed, unsupported or conflicting entries are reported and left untouched. A future `claude-receipt archive --purge` may make deletion explicit; no automatic retention or pruning exists.
 
 Opt-in text features (recurring phrases, text-based personality) are computed from the transcript while it still exists and are **not archived**. So they're unavailable for sessions whose transcript has been cleaned up. This trade-off is deliberate.
 

@@ -1,6 +1,6 @@
 # Architecture
 
-Status: implemented through M1b: `source/claude-code` and the Session (M1a), `analytics`, the Receipt model and its JSON contract, and read-only `git` enrichment (M1b). The archive, renderers and product CLI are specification only; their field names may be refined when built, but the boundaries may not.
+Status: implemented through M2: `source/claude-code` and the Session (M1a), `analytics`, the Receipt model and its JSON contract, read-only `git` enrichment (M1b), and the local `archive` (M2). Renderers, aggregation and the product CLI are specification only; their field names may be refined when built, but the boundaries may not.
 
 ## 1. Data flow
 
@@ -118,7 +118,7 @@ interface Metric {                    // one per id in the METRICS registry, typ
 
 **Designed for what comes next:**
 - *Terminal and SVG/PNG renderers*: everything needed is semantic (values, units, provenance for `~`, `sensitive` for redaction); nothing needs re-deriving.
-- *Archive (M2)*: an ArchiveEntry stores this Receipt minus `session.title`; `session.projectKey`, `entrypoint`, `forkOf` and `sourceSchemaVersion` are already here. Hashed API call keys come from the Session at archive time (§6).
+- *Archive (M2)*: an ArchiveEntry stores this Receipt minus `session.title` (§6); `session.projectKey`, `entrypoint`, `forkOf` and `sourceSchemaVersion` are already here.
 - *Week/month aggregation and Wrapped*: per-model token and cost breakdowns (`detail.byModel`), `languages`, `toolCalls.byName`, `commands.topPrograms`, the local-hour histogram (`lore.peakHour.detail.byHour`, kept even when the session is too short for a peak), and `context.timeZone` let aggregates be built from receipts alone, after transcripts are cleaned up.
 
 ## 5. Git integration
@@ -139,40 +139,59 @@ type GitFacts =
 
 ## 6. Archive
 
-**Location:** `~/.claude-receipt/archive/`. Override with `CLAUDE_RECEIPT_HOME`. Never inside `~/.claude`.
+Implemented in `src/archive/index.ts` (M2). A local, metrics-only record of session Receipts that outlives Claude Code's transcript cleanup.
 
-**Layout:** one file per session: `archive/<sessionId>.json`. There is no database. At expected volumes (a few thousand sessions per year) a directory of small JSON files is simple, inspectable and easy to delete. Revisit only if aggregation becomes measurably slow.
+**Location:** `~/.claude-receipt/archive/`, or `$CLAUDE_RECEIPT_HOME/archive/`. Never inside `~/.claude`. Created on first write.
+
+**Layout:** one file per session, `archive/<key>.json`. There is no database. At expected volumes (a few thousand sessions per year) a directory of small JSON files is simple, inspectable and easy to delete. Revisit only if aggregation becomes measurably slow.
 
 ```ts
 interface ArchiveEntry {
   archiveSchemaVersion: 1;
-  sessionId: string;
-  archivedAt: string;
-  generatorVersion: string;
-  sourceFingerprint: { files: SourceFile[] };   // size + mtime → detects changes
-  sourceStillExists?: boolean;                   // updated opportunistically
-  apiCallKeys: string[];                         // sha256(message.id) truncated to 16 hex chars, for cross-session dedupe
-  fork?: { parentSessionId: string };            // detected at archive time
-  receipt: Receipt;                              // the computed session receipt with session.title removed
+  key: string;                          // archiveKey(receipt.session.id), also the file name
+  archivedAt: string;                   // first written (ISO UTC)
+  updatedAt: string;                    // last written (a continuation of the same session)
+  contentHash: string;                  // sha256 of the canonical Receipt without generatedAt
+  source: { bytes: number; mtimeMs: number };   // transcript fingerprint: main + subagent files, no paths
+  receipt: Receipt;                     // the session Receipt with session.title = null
 }
 ```
 
-`apiCallKeys` exists because forks copy their parent's API calls (M0 §1). Aggregation must count each call once, even after the parent's transcript has been cleaned up. Hashed ids are opaque and carry no content.
+**Identity (the key).** `archiveKey(sessionId) = sha256("claude-receipt/archive-key/v1\0" + adapter + "\0" + sessionId)`, first 32 hex characters.
+- Filesystem-safe on every platform: 32 lowercase hex characters, so no separators, reserved names (`CON`), case-folding collisions or path traversal, whatever the id contains.
+- Deterministic and stable: the same session always maps to the same file, so re-archiving never duplicates.
+- Collision-resistant (128 bits) and namespaced by source adapter; independent of project paths, so moving or renaming a project doesn't change it. It reveals nothing beyond what the entry already contains.
+- Built only from the session id. No API-call, message, tool-use or agent id is used or stored.
 
-**Write policy:**
+What that means for each kind of session:
+- *Normal session:* one entry.
+- *Resumed session:* same session id, so the same entry, updated as a continuation when its transcript grows (all runs in one Receipt).
+- *Fork:* its own session id, so its own entry, with `receipt.session.forkOf` naming the parent and only its own activity counted.
+- *Fork whose parent transcript has disappeared before it was first archived:* not detectable (`M1_FINDINGS.md` §3.1), so archived as an ordinary session including the copied history. A fork archived while its parent existed keeps `forkOf`: a later receipt that lost it is refused (below).
+- *Multiple projects / Windows paths:* identity doesn't involve the project; grouping uses `receipt.session.projectKey` (case-insensitive for Windows paths).
+- *Duplicate transcripts with the same session id* (e.g. a copied project folder): same key; identical content is a no-op, anything else is a conflict.
 
-- Every CLI run sweeps `~/.claude/projects/*/*.jsonl` (plus each session's `<sessionId>/subagents/*.jsonl`) and (re)archives sessions that are new or whose fingerprint changed, and are not live. A session counts as live only if its `sessions/<pid>.json` PID is actually running (stale entries exist after crashes). Cost: parsing a few MB, which is acceptable. It can be optimized with fingerprints alone.
-- Fork detection: a session whose record uuids or `message.id`s overlap an earlier session (in transcripts or in archived `apiCallKeys`) is a fork. Its receipt counts only its own, non-inherited API calls, and its `cost-state` (which includes inherited usage) is not used for its totals.
-- An entry whose transcript has disappeared is **kept as is**. The archive is the long-term record.
-- Writes are atomic (write a temp file, then rename).
+**Writing (`writeReceipt(receipt, source)`)** returns `created`, `unchanged`, `updated`, `conflict` or `rejected`:
+- *Rejected* (nothing written): a live session (archive it once it has ended), a Receipt that fails `validateReceipt`, an unsupported Receipt `schemaVersion`, an invalid fingerprint.
+- *Idempotent:* if the stored `contentHash` equals the new one, the entry is `unchanged` and not rewritten. `generatedAt` is excluded from the hash, so rebuilding the same Receipt later is a no-op.
+- *Continuation:* a differing Receipt replaces the entry only if it's the same session, its transcript grew (`source.bytes` larger), it doesn't end earlier, it keeps a known `forkOf`, and it was made by the same generator version in the same time zone. `archivedAt` is kept, `updatedAt` changes.
+- *Conflict* (nothing written, existing history untouched): anything else, including an existing entry that is malformed, invalid or of an unsupported version. Recomputing history with a newer generator will be an explicit operation in a later milestone, never a silent overwrite.
+- *Atomic:* the entry is written to a temp file in the same directory (`<key>.json.tmp-<pid>-<random>`), flushed, then renamed over `<key>.json`. A reader sees the old entry or the new one, never a partial file under the entry's name. A crash can leave a temp file; readers ignore it, and it's never deleted automatically.
 
-**Schema evolution:**
+**Reading (`readArchived(sessionId)`, `listArchive()`).** Each file is parsed, migrated if needed, and validated before use:
+- `ok`, or `missing` / `malformed` (not JSON, or not an object) / `unsupported` (an `archiveSchemaVersion` newer than supported, or an unsupported Receipt `schemaVersion`) / `invalid` (fails `validateEntry`: unknown fields, key or hash mismatch, a title, a live session, an invalid Receipt).
+- `listArchive()` returns the valid entries sorted by session start, plus the problem files. Only `<32 hex>.json` names are considered; temp and foreign files are ignored. Nothing is ever deleted or repaired.
 
-- Readers accept every `archiveSchemaVersion` up to the current one via pure migration functions `vN → vN+1`, tested with fixtures of each old version.
-- When a transcript still exists, re-computing from source is preferred to migrating.
-- An entry that fails to parse or migrate is skipped with a warning, never deleted.
+**Schema evolution.** `archiveSchemaVersion` is explicit and checked on every read. `migrateEntry` applies `MIGRATIONS[n]` (version n → n+1) step by step up to the current version; the table is empty while only v1 exists. A version newer than supported, or a missing step, is `unsupported`, never guessed at. When a transcript still exists, re-computing from source is preferred to migrating.
 
-**Contents guarantee:** an ArchiveEntry contains only what the Receipt contains, minus `session.title` (the one free-text field, which is never archived). See `PRIVACY.md` for the exhaustive list of what is stored.
+**Contents guarantee:** an ArchiveEntry contains the Receipt (minus `session.title`), a size/mtime fingerprint and hashes, and nothing else; `validateEntry` rejects any other field. See `PRIVACY.md` §5.
+
+**Deliberately deferred:**
+- The sweep ("every CLI run archives new or changed, non-live sessions") belongs to the CLI (M3). `src/dev/archive.ts` does it for development.
+- Skipping the parse for unchanged transcripts (fingerprint pre-check): an optimization for the CLI sweep.
+- Explicit recomputation of archived entries with a newer generator, and entry migrations beyond v1.
+- Deletion, pruning and retention: only "delete the directory" today; a `claude-receipt archive --purge` may come later.
+- Archive-assisted fork detection for forks whose parent transcript is gone: it would need call identifiers in the archive, which the archive deliberately doesn't store.
 
 ## 7. Source format change strategy
 

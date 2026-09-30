@@ -11,7 +11,8 @@ Claude Receipt turns Claude Code sessions into receipts: hard stats, coding stat
 - M0 (format verification): done, see `docs/research/M0_FINDINGS.md`.
 - M1a (source adapter + normalized Session in `src/source/claude-code/`): implemented, see `docs/research/M1_FINDINGS.md`.
 - M1b (analytics in `src/analytics/`, Receipt model + validator in `src/receipt/`, Receipt JSON in `src/render/json.ts`, read-only git in `src/git/`): implemented.
-- M2 onwards (archive, terminal renderer, product CLI, visual receipt): not started. Don't build them unless the current task asks for it.
+- M2 (local metrics-only archive in `src/archive/`): implemented.
+- M3 onwards (terminal renderer, product CLI and its archive sweep, aggregation, visual receipt): not started. Don't build them unless the current task asks for it.
 
 ## Commands
 
@@ -19,13 +20,14 @@ Node ≥ 24 runs the TypeScript sources directly (no build step). Dev-only depen
 
 | Command | What it does |
 |---|---|
-| `npm test` | All tests: parser (`test/source/`), analytics and Receipt contract (`test/analytics/`), git enrichment on throwaway repos (`test/git/`), fixture safety |
+| `npm test` | All tests: parser (`test/source/`), analytics and Receipt contract (`test/analytics/`), git enrichment on throwaway repos (`test/git/`), archive (`test/archive/`), fixture safety |
 | `npm run typecheck` | `tsc` in strict mode, no emit |
 | `node src/dev/parse.ts <main.jsonl>...` | Parse transcripts together (forks detected among them) and print Session JSON |
 | `node src/dev/parse.ts --session <id\|prefix>` / `--all` | Same for local sessions under `CLAUDE_CONFIG_DIR` or `~/.claude` |
 | `node src/dev/parse.ts … --summary` | Counts only. **Use this on real sessions**; full Session JSON contains paths and titles |
 | `node src/dev/receipt.ts <main.jsonl>...` / `--session <id>` / `--all` | Session → git (read-only) → Receipt JSON. Flags: `--no-git`, `--tz <zone>` |
 | `node src/dev/receipt.ts … --summary` | Provenance and null reasons per metric, no values. **Use this on real sessions** |
+| `node src/dev/archive.ts --all [--dir <path>]` | Archive every non-live local session (development sweep). Writes to the real archive unless `--dir` or `CLAUDE_RECEIPT_HOME` points elsewhere; prints status counts only |
 | `node scripts/m0/build-fixtures.mjs` | Regenerate `fixtures/claude-code/2.1.283` from the M0 lab sessions (only on the machine that has them) |
 | `node scripts/anonymize-fixture.mjs <out-dir> <in.jsonl>…` | Anonymize transcripts into fixture candidates (review before committing) |
 | `node scripts/m0/watch-transcript.mjs <sessionId> [seconds]` | Sample a live transcript for partial writes |
@@ -45,7 +47,7 @@ source/claude-code  →  Session  →  analytics  →  Receipt  →  render/tty 
 - **analytics/** is pure functions: Session (+ optional git facts) → Receipt. No I/O and no formatting.
 - **Receipt contains semantic data, never presentation copy or layout.** Semantic values may be strings (model names, languages, file names, project identifiers, versions) as well as numbers. Labels, headings, formatting (units, rounding, `1h 42m`), playful microcopy, ANSI codes, padding and visual layout belong to the format/render layer.
 - **render/json** is a stable, versioned public contract (`schemaVersion`). A breaking change needs a version bump and a note in `docs/ARCHITECTURE.md`.
-- **archive/** stores computed metrics only, with a versioned schema. It never deletes entries because a transcript disappeared.
+- **archive/** stores computed metrics only (the Receipt without its title), with a versioned schema, keyed by a hash of the session id. It never deletes entries because a transcript disappeared, never overwrites a conflicting or unreadable entry, and never stores API-call, message, tool-use or agent ids (hashed or not).
 - No plugin framework and no adapter registry. There is exactly one source adapter until a second real format exists.
 
 ## Metric rules (the most important section)
