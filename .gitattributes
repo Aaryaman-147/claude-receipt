@@ -1,0 +1,2 @@
+# Fixtures are byte-exact (truncated tails, missing final newlines): never convert line endings.
+fixtures/** -text
