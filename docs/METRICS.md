@@ -2,13 +2,17 @@
 
 Every metric shown by Claude Receipt is defined here. A metric that isn't in this file must not be shown. Ids are stable: they are keys in the JSON contract (`ARCHITECTURE.md` §4).
 
+All metrics marked **MVP** are implemented in `src/analytics/index.ts` (M1b); their ids, sections, units and value shapes are registered in `src/receipt/types.ts`. Metrics marked **future** are not computed yet.
+
 ## Provenance
 
 | Provenance | Meaning | Rendering |
 |---|---|---|
-| `exact` | Read directly from a recorded field, or a plain count of discrete recorded events. No interpretation. | As is |
-| `derived` | Deterministic computation over exact data with a documented rule (sums after deduplication, unique counts, max/min, extension maps). Reproducible, but depends on the rule being right. | As is |
-| `heuristic` | Involves a threshold, pattern matching, classification or interpretation. May be wrong. | Marked `~`, with a legend |
+| `exact` | Read directly from a recorded field, or a plain count of discrete recorded events. No interpretation. | As a recorded fact |
+| `derived` | Deterministic computation over exact data with a documented rule (sums after deduplication, unique counts, max/min, extension maps). Reproducible, but depends on the rule being right. | Visibly marked as computed, distinct from exact |
+| `heuristic` | Involves a threshold, pattern matching, classification or interpretation. May be wrong. | Marked `~` (or equivalent), with a legend; never styled like a fact |
+
+**Rendering rule (all renderers: terminal, SVG/PNG, aggregates, Wrapped):** the three provenances must stay visually and semantically distinguishable. A derived or heuristic value is never presented as if it were directly recorded, and wording must not upgrade it either ("you ran 12 tests" for a heuristic count is wrong; "~12 test runs detected" is right). The exact marks are a design decision for M3/M6, but they must exist, be consistent across renderers, and be explained in a legend whenever used. Examples that must never read as recorded facts: biggest rabbit hole and longest error streak (derived), active time, test runs and Claude-authored commit detection (heuristic).
 
 Rules:
 
@@ -77,14 +81,14 @@ Privacy levels: **none** (numbers only), **meta** (names, paths or ids, which ar
 - **Privacy:** none.
 
 ### `session.duration.active`: Active time · heuristic · MVP
-- **Source:** T (all record timestamps).
-- **Calculation:** sum of gaps between consecutive records, where each gap is capped at an idle threshold (initially 5 min; tuned with real data in M1).
-- **Limitations:** the threshold is arbitrary, and reading or thinking time without any records looks like idle time.
+- **Source:** T, via the Session's item timestamps (prompts, API calls, tool calls, turns, slash commands, run starts and ends).
+- **Calculation:** sum of gaps between consecutive timestamps, each capped at an idle threshold (5 min, `detail.idleThresholdMs`).
+- **Limitations:** the threshold is arbitrary, and reading or thinking time without any records looks like idle time. Timestamps of records the Session doesn't keep (attachments, tool results) are not used.
 - **Privacy:** none.
 
 ### `api.duration`: Claude working time · exact · MVP
 - **Source:** CS `totalAPIDuration`. Detail: `totalToolDuration`.
-- **Limitations:** only in completed sessions. `null` otherwise.
+- **Limitations:** only when the cost-state is usable: completed, not live, latest run closed, and **not a fork** (a fork's CS includes the parent's time). `null` otherwise, with the reason.
 - **Privacy:** none.
 
 ### `models.used`: Models · exact · MVP
@@ -100,6 +104,7 @@ Privacy levels: **none** (numbers only), **meta** (names, paths or ids, which ar
   - Killed sessions lose the in-flight response entirely.
   - Never sum usage without deduplication (it inflates totals about 2×).
   - Never use a fork's CS as its own total (it includes the parent's usage).
+  - `null` when there is neither a usable CS nor any recorded API call (e.g. a killed session before its first response); never 0.
 - **Privacy:** none.
 
 ### `tokens.thinking`: Thinking tokens · exact (CS) or derived (T) · future
@@ -110,7 +115,11 @@ Privacy levels: **none** (numbers only), **meta** (names, paths or ids, which ar
 ### `cost.apiEquivalent`: API EQUIVALENT · exact (CS) or derived (P) · MVP
 - **Source:** CS `totalCostUSD` (Claude Code's own estimate) for completed, non-fork sessions. Otherwise the session's own tokens × P.
 - **Calculation:** with P: per model, `input×in + output×out + cacheRead×cr + cacheWrite×cw` using the table's rates (including cache-write TTL rates if the usage breakdown distinguishes them).
-- **Limitations:** this is **not** money spent and never labelled as such. If CS says `hasUnknownModelCost`, or a model is missing from P, the value is `null` (or, with CS and P, the known part with `detail.incomplete = true`, rendered `~`). The table is dated (`generator.pricingTableDate`).
+- **Limitations:** this is **not** money spent and never labelled as such. The table is dated (`generator.pricingTableDate`, `src/analytics/pricing.ts`); it prices standard-tier, standard-speed calls only.
+  - CS `hasUnknownModelCost`: priced from P instead, with `detail.costStateHasUnknownModelCost`.
+  - A model missing from P, fast mode, or a non-standard service tier: those calls are unpriced. The known part is the value, `detail.incomplete = true`, provenance **heuristic**, a `pricing:unpriced:<model>` warning. If nothing can be priced, `null`.
+  - Cache writes without a 5m/1h breakdown are priced at the 5-minute rate: provenance **heuristic**, `detail.assumedCacheTtl`.
+  - Verified: P reproduces Claude Code's own `costUSD` exactly on every completed fixture (Haiku 4.5) and on real Opus 5.5 sessions.
 - **Privacy:** none.
 
 ### `prompts.count`: Prompts · exact · MVP
@@ -126,7 +135,7 @@ Privacy levels: **none** (numbers only), **meta** (names, paths or ids, which ar
 
 ### `turns.count`: Turns · exact · MVP
 - **Source:** T `system/turn_duration` records.
-- **Limitations:** a turn interrupted before completion may not produce a record.
+- **Limitations:** a turn interrupted before completion may not produce a record. Headless (`sdk-cli`) runs never write them (M0), and neither did the observed `claude-desktop` session (M1): a session with prompts but no `turn_duration` records gets `null` ("not recorded"), not 0.
 - **Privacy:** none.
 
 ---
@@ -135,36 +144,36 @@ Privacy levels: **none** (numbers only), **meta** (names, paths or ids, which ar
 
 ### `files.read` / `files.created` / `files.edited`: Files · derived · MVP
 - **Source:** T. `Read` tool file paths; `Write` results `type: create` or `update`; `Edit` (and `MultiEdit`, `NotebookEdit` if present) file paths.
-- **Calculation:** unique paths per category. A file created then edited counts once as created and once in edited.
-- **Limitations:** files touched through Bash (`sed`, `cat >`, scripts, generators) are invisible. Greps and globs don't count as reads.
+- **Calculation:** unique paths per category, successful calls only. `created` = Write `create`; `edited` = Edit/MultiEdit/NotebookEdit and Write `update`. A file created then edited counts once in each. Paths are compared with the project-key rule (case-insensitive for Windows paths).
+- **Limitations:** files touched through Bash (`sed`, `cat >`, scripts, generators) are invisible. Greps and globs don't count as reads. Writes whose result is missing (live/killed) are not counted; `files.edited.detail.unresolvedWrites` says how many.
 - **Privacy:** meta (paths). Only counts leave the analytics module, except `files.mostEdited`.
 
 ### `lines.added` / `lines.removed`: Lines · derived · MVP
 - **Source:** T. `Edit` `structuredPatch` (`+` and `-` lines), `Write` create (all lines added), `Write` update (`structuredPatch`). Cross-check: CS `totalLinesAdded` / `totalLinesRemoved`.
-- **Limitations:** excludes Bash-driven changes and user edits outside Claude. A mismatch with CS becomes a warning. Compare with `git.lines` for a fuller picture.
+- **Limitations:** excludes Bash-driven changes and user edits outside Claude. A mismatch with CS becomes a warning; `detail.matchesCostState` when CS is usable. Edits without countable lines (missing results, NotebookEdit) make the sum a lower bound: `detail.partial`, `detail.uncountedOps`. Compare with `git.lines` for a fuller picture.
 - **Privacy:** none (patch text is read in memory to count lines, then discarded).
 
 ### `files.mostEdited`: Most edited file · derived · MVP
 - **Source:** T.
-- **Calculation:** the file with the most Edit/Write operations. Ties are broken by lines changed.
-- **Privacy:** meta. Exports show the basename or only the extension, depending on redaction level.
+- **Calculation:** the file with the most successful create/update/edit operations. Ties are broken by lines changed, then path. Value: the path; `detail: { operations, linesChanged }`. `null` when nothing was edited.
+- **Privacy:** meta (`sensitive`). Exports show the basename or only the extension, depending on redaction level.
 
 ### `languages`: Languages · derived · MVP
 - **Source:** T (edited or created file paths).
-- **Calculation:** a bundled extension → language map, weighted by lines changed.
-- **Limitations:** extensionless files and ambiguous extensions (`.h`) are "Other". Reflects Claude's writes, not the repository's composition.
+- **Calculation:** a bundled extension → language map (`src/analytics/languages.ts`), weighted by lines changed (added + removed). Value: `[{ language, lines, files }]`, most lines first. `null` when nothing was edited.
+- **Limitations:** extensionless files and ambiguous extensions (`.h`) are "Other" (`Dockerfile` and `Makefile` are recognised by name). Reflects Claude's writes, not the repository's composition.
 - **Privacy:** none.
 
 ### `commands.count` / `commands.topPrograms`: Shell commands · exact (count) / derived (programs) · MVP
 - **Source:** T `Bash` / `PowerShell` tool calls.
-- **Calculation:** program = the first word of the first meaningful segment, after stripping env assignments, `sudo`/`time`-style prefixes and `cd …&&` (`classifyCommand` in `src/source/claude-code/commands.ts`). Only programs on a fixed allowlist are kept by name; anything else (custom scripts, internal tools) is `other`.
+- **Calculation:** program = the first word of the first meaningful segment, after stripping env assignments, `sudo`/`time`-style prefixes and `cd …&&` (`classifyCommand` in `src/source/claude-code/commands.ts`). Only programs on a fixed allowlist are kept by name; anything else (custom scripts, internal tools) is `other`. `commands.topPrograms` is the full list `[{ program, count }]`, most used first (renderers take the top few), with `detail.byCategory`.
 - **Limitations:** pipelines and scripts are simplified; commands that are only custom scripts all count as `other`.
 - **Privacy:** the raw command is **never** stored. Only the allowlisted program name and category are kept.
 
 ### `tests.runs`: Test runs · heuristic · MVP
 - **Source:** T (command classification).
-- **Calculation:** commands matching a bundled pattern list (`pytest`, `vitest`, `jest`, `npm|pnpm|yarn|bun test`, `go test`, `cargo test`, `node --test`, `dotnet test`, `mvn test`, `gradle test`, `rspec`, …).
-- **Limitations:** misses custom scripts (`make check`) and may count non-test commands matching a pattern.
+- **Calculation:** shell commands whose classification category is `test` (`classifyCommand`): `pytest`, `vitest`, `jest`, `mocha`, `playwright`, `rspec`, `phpunit`, `tox`, `npm|pnpm|yarn|bun test` and `run test*`, `npx <runner>`, `python -m pytest|unittest`, `node --test`, `cargo|go|dotnet|mvn|gradle test`, `make test|check`. `detail.byProgram`.
+- **Limitations:** misses custom scripts (`./run-tests.sh`) and may count non-test commands matching a pattern.
 - **Privacy:** none.
 
 ### `tests.outcome`: Test pass/fail · heuristic · future
@@ -182,18 +191,18 @@ Privacy levels: **none** (numbers only), **meta** (names, paths or ids, which ar
 - **Limitations:** user interruptions of a response (Esc) have **no verified on-disk shape** (M0 §7: UNKNOWN), so they aren't counted until a real sample is captured. Until then the metric covers interrupted tool runs only, and `detail.scope = "tool-runs"`.
 - **Privacy:** none.
 
-### `commits.byClaude`: Commits made by Claude · derived · MVP
-- **Source:** T (a Bash command classified as `git commit` with no error). Confirmed with G when available.
-- **Limitations:** commits via aliases, scripts or GUI tools are missed.
+### `commits.byClaude`: Commits made by Claude · heuristic · MVP
+- **Source:** T (a Bash/PowerShell command with a `git commit` segment and no error). Confirmed with G when available: `detail.confirmedByGit` counts those calls followed by a commit in the window between 1 minute before and 5 minutes after the call (`null` without git).
+- **Limitations:** heuristic because it rests on command classification (like `tests.runs`). Commits via aliases, scripts or GUI tools are missed; a `git commit` that made no commit (nothing staged) but exited 0 still counts, which is what the git confirmation is for.
 - **Privacy:** SHAs are meta.
 
 ### `commits.inWindow` / `commits.coAuthored`: Commits in session · exact · MVP
-- **Source:** G (`git log` in the session window; `Co-Authored-By:` trailer containing "Claude").
-- **Limitations:** needs a repository and a working `git`. Commits by the user in the same window count in `inWindow`; `coAuthored` isolates Claude-attributed ones.
+- **Source:** G (`git log --branches HEAD` by committer date in `[startedAt, endedAt + 5 min]`; a `Co-Authored-By:` trailer containing "Claude" or `noreply@anthropic.com`).
+- **Limitations:** needs a repository and a working `git`. Commits by the user in the same window count in `inWindow` (for a resumed session the window spans the gaps between runs); `coAuthored` isolates Claude-attributed ones. An empty repository gives a true `0`; no repository, no `git`, a missing directory or git not run give `null` with the reason.
 - **Privacy:** messages and authors are not kept.
 
-### `git.lines`: Lines changed in git · exact · MVP (M4)
-- **Source:** G (`--numstat` for commits in the window).
+### `git.lines`: Lines changed in git · exact · MVP
+- **Source:** G (`--numstat` for commits in the window; binary files are skipped). Value `{ added, removed }`.
 - **Limitations:** covers committed work only, from whoever wrote it.
 - **Privacy:** none.
 
@@ -203,7 +212,7 @@ Privacy levels: **none** (numbers only), **meta** (names, paths or ids, which ar
 
 ### `lore.rabbitHole`: Biggest rabbit hole · derived · MVP
 - **Source:** T.
-- **Calculation:** the user prompt followed by the most tool calls before the next prompt. Value: `{toolCalls, durationMs, promptIndex}`.
+- **Calculation:** the user prompt followed by the most tool calls before the next prompt (subagent calls count toward the prompt that spawned them; ties go to the earlier prompt). Value: `{ promptIndex, toolCalls, durationMs }`, where `durationMs` runs from the prompt to its last tool call. `null` when no tool call follows a prompt.
 - **Limitations:** "rabbit hole" is framing, and a large, planned task looks the same. The prompt text is not shown.
 - **Privacy:** none.
 
@@ -214,22 +223,22 @@ Privacy levels: **none** (numbers only), **meta** (names, paths or ids, which ar
 
 ### `lore.peakHour`: Peak hour · derived · MVP
 - **Source:** T timestamps, local timezone.
-- **Calculation:** the local clock hour with the most prompts plus tool calls. Only shown if the session spans ≥ 2 hours. Mainly meaningful in aggregates.
+- **Calculation:** the local clock hour (in `Receipt.context.timeZone`) with the most prompts plus tool calls; ties go to the earlier hour. `null` if the session spans < 2 hours, but `detail.byHour` (24 counts) is kept whenever there is activity, for aggregation. Mainly meaningful in aggregates.
 - **Privacy:** none.
 
 ### `lore.errorStreak`: Longest error streak · derived · MVP
 - **Source:** T.
-- **Calculation:** the longest run of consecutive tool calls with `isError`.
+- **Calculation:** the longest run of consecutive tool calls (ordered by time, main thread and subagents together) with status `error`. `null` when there are no tool calls.
 - **Privacy:** none.
 
 ### `lore.readEditRatio`: Measure twice, cut once · derived · MVP
 - **Source:** T.
-- **Calculation:** `Read` calls ÷ Edit/Write calls.
+- **Calculation:** successful `Read` calls ÷ successful Write/Edit/MultiEdit/NotebookEdit calls; `detail: { reads, edits }`. `null` when there are no edits.
 - **Privacy:** none.
 
 ### `lore.cacheHitRate`: Cache hit rate · derived · MVP
 - **Source:** tokens metrics.
-- **Calculation:** `cacheRead ÷ (input + cacheRead + cacheWrite)`.
+- **Calculation:** `cacheRead ÷ (input + cacheRead + cacheWrite)` over the token metrics (so from CS or the transcript, whichever they used). Derived even when the tokens are exact. `null` without tokens or with zero input.
 - **Privacy:** none.
 
 ### `lore.nightOwl`: Night owl · derived · future

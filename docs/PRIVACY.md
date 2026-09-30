@@ -19,7 +19,7 @@ Privacy is a defining product property, not a setting. Claude Receipt reads some
 | `~/.claude/projects/*/<sessionId>/subagents/*.meta.json` | Subagent type, model and parent call | Only `agentType`, `model`, `toolUseId` are used. `description` (free text) is parsed with the file but never used or kept. |
 | `~/.claude/sessions/*.json` | Detecting live sessions | Only `pid` and `sessionId` are used, plus a check that the PID is running (entries go stale after crashes). Never the `*.key` files beside them. |
 | `~/.claude/history.jsonl` | Future: long-range activity timestamps | Only `timestamp`, `project`, `sessionId`. Never `display` or `pastedContents`. |
-| `git` in a session's `cwd` | Commits in the session window | Read-only commands. SHAs, timestamps, numstat, a Co-Authored-By boolean. |
+| `git` in a session's `cwd` | Commits in the session window | Only `git rev-parse` and `git log` (no index or working-tree writes: `GIT_OPTIONAL_LOCKS=0`, fsmonitor off). Kept: SHAs, committer timestamps, numstat counts, a Co-Authored-By boolean. `Co-Authored-By` trailer values are checked in memory and dropped; commit messages, authors and file names are never read into the result. |
 
 ## 3. What is read transiently versus kept
 
@@ -49,6 +49,17 @@ The Session (`src/source/claude-code/types.ts`) is the only output of the parser
 
 It never keeps prompt text, response or thinking text, raw commands, command arguments, stdout/stderr, file contents, patches, `meta.json` descriptions, custom titles or agent names. Record uuids are used internally for fork detection and dropped. `test/source/claude-code.test.ts` asserts this for every fixture.
 
+### What the Receipt contains (M1b)
+
+The Receipt (`src/receipt/types.ts`) is computed from the Session (and optional git facts), so it can only hold what those hold. It contains:
+
+- **Session header:** session id, project name, project key, `cwd`, entrypoint, title (display only), start/end timestamps, live/complete flags, parent session id for forks, Claude Code versions, time zone used.
+- **Metric values:** numbers, model names, tool names (including MCP server names, marked `sensitive`), allowlisted program names, language names, one file path (`files.mostEdited`, marked `sensitive`), git commit counts and line counts.
+- **Details:** per-model token and cost breakdowns, counts by kind/tool/program/category, the git window and an hour-of-day histogram. No text.
+- **Reasons and warnings:** fixed strings written by Claude Receipt, and warning codes.
+
+It never contains Session-level identifiers beyond the session id (no API call ids, tool-use ids or agent ids), commit SHAs, prompt/response text, commands, patches or tool output. `test/analytics/receipt.test.ts` checks every fixture Receipt for leaked text, raw-content fields and presentation fields; the M1b real-data check (16 local sessions) found none of 1,728 private strings from their transcripts in any Receipt.
+
 ## 4. What is never read
 
 - `~/.claude/.credentials.json`, any `*.key` file (`sessions/*.key`, `daemon/pipe.key`) or token files.
@@ -66,7 +77,7 @@ Location: `~/.claude-receipt/archive/` (overridable via `CLAUDE_RECEIPT_HOME`).
 - numbers (durations, token counts, cost estimate, counts, line counts);
 - model names, tool names, program names and command categories, language names;
 - the most-edited file path;
-- git commit SHAs and timestamps (when available);
+- git commit counts, Claude co-authorship counts and line counts for the session window (when available; no SHAs, messages or authors);
 - hashed API call keys (sha256 of Claude's opaque `message.id`, truncated) and a fork's parent session id, used only to avoid double counting forked sessions;
 - provenance and warnings.
 

@@ -1,6 +1,6 @@
 # Architecture
 
-Status: `source/claude-code` and the Session model are implemented (M1a). Everything downstream (analytics, Receipt, archive, renderers, CLI) is specification only; its field names may be refined when built, but the boundaries may not.
+Status: implemented through M1b: `source/claude-code` and the Session (M1a), `analytics`, the Receipt model and its JSON contract, and read-only `git` enrichment (M1b). The archive, renderers and product CLI are specification only; their field names may be refined when built, but the boundaries may not.
 
 ## 1. Data flow
 
@@ -26,7 +26,8 @@ Status: `source/claude-code` and the Session model are implemented (M1a). Everyt
 |---|---|---|
 | `source/claude-code` | Find transcripts, stream-parse JSONL, deduplicate, build a `Session` | Claude Code's file format (the **only** module that does) |
 | `git/` | Given a `cwd` and a time window, return `GitFacts` by running `git` read-only | The `git` CLI |
-| `analytics/` | Pure functions: `(Session, GitFacts?) → Receipt` | Session, GitFacts, pricing table, metric registry |
+| `analytics/` | Pure functions: `(Session, GitFacts?) → Receipt` (`buildReceipt`) | Session, GitFacts, pricing table, metric registry |
+| `receipt/` | The Receipt model, metric registry and schema validator | Nothing else (shared by analytics, renderers, archive) |
 | `archive/` | Read and write `ArchiveEntry` files, migrate old schema versions | Receipt, ArchiveEntry |
 | `aggregate/` (future) | `ArchiveEntry[] → PeriodReceipt` | ArchiveEntry |
 | `render/tty` | Receipt → terminal text (layout, colour, `~` markers, microcopy) | Receipt |
@@ -39,7 +40,7 @@ Shared helpers used by several renderers (duration and number formatting, the mi
 **Rules:**
 
 - Nothing outside `source/claude-code` reads raw records or knows field names like `toolUseResult`, `cost-state` or `structuredPatch`.
-- `analytics/` does no I/O. Pricing is a data file passed in.
+- `analytics/` does no I/O. Pricing is a dated data table (`src/analytics/pricing.ts`, overridable via `buildReceipt` options); git facts and the time zone are passed in.
 - Renderers never compute metrics. If a renderer needs a number, it belongs in the Receipt.
 - No plugin framework or adapter registry. When a second source format appears, `source/` gains a second module and `cli` chooses; nothing else changes.
 
@@ -78,55 +79,63 @@ Implementation: `scan.ts` streams one file and reduces each record to text-free 
 
 ## 4. Receipt model
 
-The Receipt is the output of analytics and the input of every renderer and of the archive.
+**Source of truth: [`src/receipt/types.ts`](../src/receipt/types.ts)** (implemented in M1b, `RECEIPT_SCHEMA_VERSION = 1`), checked by [`src/receipt/validate.ts`](../src/receipt/validate.ts). The Receipt is the output of analytics and the input of every renderer and of the archive.
 
 **Rule: the Receipt contains semantic data, never presentation copy or layout.** Values may be numbers, booleans or strings, as long as they mean something independently of how they're shown: model names, language names, file names, project identifiers, versions, archetype ids. What does not belong in the Receipt: labels and headings, formatted values (`1h 42m`, `$12.84`, `12.3k`), playful microcopy, ANSI codes, padding, column widths or anything visual. Those belong to the `format` module and renderers.
 
 ```ts
 interface Receipt {
   schemaVersion: 1;
-  generatedAt: string;
+  kind: "session";                    // later: "project" | "week" | "month" | "wrapped"
+  generatedAt: string;                // ISO UTC
   generator: { name: "claude-receipt"; version: string; pricingTableDate: string };
-  kind: "session";                   // later: "project" | "week" | "month" | "wrapped"
-  session: { id: string; project: string; cwd: string; entrypoint: string | null; title?: string; startedAt: string; endedAt: string; runs: number; isLive: boolean; clientVersions: string[] };
-  sections: {
-    hard: Metric[];
-    coding: Metric[];
-    lore: Metric[];
+  context: { timeZone: string };      // IANA zone used for local-time metrics (peak hour)
+  session: {
+    id: string; sourceSchemaVersion: number; project: string | null; projectKey: string | null; cwd: string | null;
+    entrypoint: string | null; title: string | null; startedAt: string | null; endedAt: string | null;
+    live: boolean; complete: boolean; forkOf: string | null; clientVersions: string[];
   };
-  warnings: string[];
+  sections: { hard: Metric[]; coding: Metric[]; lore: Metric[] };
+  warnings: { code: string; count: number }[];   // parser warnings + analytics ones (e.g. pricing:unpriced:<model>)
 }
 
-interface Metric<V = unknown> {
-  id: string;                        // stable registry id, e.g. "tokens.output" (see METRICS.md)
-  provenance: Provenance;
-  value: V | null;                   // null = unavailable, never 0-as-unknown
-  unit?: "ms" | "tokens" | "usd" | "count" | "lines" | "hour" | "percent";
-  unavailableReason?: string;        // required when value is null
-  sensitive?: boolean;               // renderer must redact in exports (paths, project names, titles)
-  detail?: Record<string, unknown>;  // structured extras, e.g. per-model breakdown
+interface Metric {                    // one per id in the METRICS registry, typed per id (MetricValueMap)
+  id: MetricId;                       // stable registry id, e.g. "tokens.output" (see METRICS.md)
+  provenance: "exact" | "derived" | "heuristic";   // of the value, or of the value it would have had
+  value: MetricValueMap[id] | null;   // null = unavailable, never 0-as-unknown
+  unit?: "ms" | "tokens" | "usd" | "count" | "lines" | "hour" | "ratio";
+  unavailableReason?: string;         // present exactly when value is null
+  sensitive?: true;                   // paths, tool/server names: renderers redact in exports
+  detail?: Record<string, unknown>;   // structured extras (per-model breakdowns, sources, histograms), never prose
 }
 ```
 
+- **Every** registry metric appears exactly once, in registry order, in its registry section; the validator enforces ids, sections, units, `sensitive`, value shapes, and the null ⇔ reason rule, and rejects unknown fields (so presentation copy can't creep in).
 - Labels, headings and microcopy come from the `format` module, keyed by `Metric.id` (and by semantic values such as a personality archetype id). This keeps the JSON contract stable when wording changes.
 - Order within a section is the rendering order. The renderer may drop items to fit, but may never alter values or provenance.
-- `render/json` emits exactly this structure. Adding fields or metric ids is non-breaking. Removing or renaming them, or changing a value's type, requires `schemaVersion` + 1.
+- Every renderer must keep `exact`, `derived` and `heuristic` visually and semantically distinguishable (`METRICS.md` → Rendering rule); `provenance` is on every metric so no renderer has to guess.
+- `render/json` (`src/render/json.ts`) emits exactly this structure. Adding fields or metric ids is non-breaking. Removing or renaming them, or changing a value's type, requires `schemaVersion` + 1.
+
+**Designed for what comes next:**
+- *Terminal and SVG/PNG renderers*: everything needed is semantic (values, units, provenance for `~`, `sensitive` for redaction); nothing needs re-deriving.
+- *Archive (M2)*: an ArchiveEntry stores this Receipt minus `session.title`; `session.projectKey`, `entrypoint`, `forkOf` and `sourceSchemaVersion` are already here. Hashed API call keys come from the Session at archive time (§6).
+- *Week/month aggregation and Wrapped*: per-model token and cost breakdowns (`detail.byModel`), `languages`, `toolCalls.byName`, `commands.topPrograms`, the local-hour histogram (`lore.peakHour.detail.byHour`, kept even when the session is too short for a peak), and `context.timeZone` let aggregates be built from receipts alone, after transcripts are cleaned up.
 
 ## 5. Git integration
 
-`git/` runs read-only commands (`git rev-parse`, `git log --since --until`, `git show --numstat`) in `session.cwd`:
+Implemented in `src/git/index.ts` (M1b). `gitFacts(cwd, startedAt, endedAt)` runs only `git rev-parse` and `git log` in the session `cwd`, with `GIT_OPTIONAL_LOCKS=0`, `core.fsmonitor=false`, no prompts and a timeout:
 
 ```ts
-interface GitFacts {
-  isRepo: boolean;
-  commits: { sha: string; ts: string; claudeCoAuthored: boolean; added: number; removed: number }[];
-  hasUncommittedChanges?: boolean;
-}
+type GitFacts =
+  | { status: "ok"; hasCommits: boolean; window: { since: string; until: string };
+      commits: { sha: string; ts: string; claudeCoAuthored: boolean; added: number; removed: number }[] }
+  | { status: "no-cwd" | "no-window" | "not-a-repo" | "git-unavailable" | "error" };
 ```
 
-- The window is `[startedAt, endedAt + 5 min]` (commit timestamps can trail the last transcript record slightly).
-- Commit messages and author identities are not kept (only the `Co-Authored-By: Claude` boolean). SHAs are sensitive in exports.
-- Missing `git`, not a repository, or an empty repository means `GitFacts` is absent and the git metrics are `null` with a reason.
+- The window is `[startedAt, endedAt + 5 min]` by committer date (commit timestamps can trail the last transcript record slightly), over **local branches and HEAD** (`--branches HEAD`, so a detached HEAD is covered); commits fetched from others stay out unless merged locally.
+- Commit messages and author identities are never read into `GitFacts`. `Co-Authored-By` trailer values are checked in memory for "Claude"/`noreply@anthropic.com` and dropped; only the boolean remains. SHAs are sensitive in exports.
+- An **empty repository** (no commits yet) is `status: "ok", hasCommits: false`: zero commits in the window is a true zero, so `commits.inWindow` is `0` (exact), not null. Missing `git`, not a repository, a missing directory or a session without timestamps give `null` with the matching reason.
+- Analytics stays pure: the caller runs `gitFacts` and passes the result to `buildReceipt`; git metrics are `null` ("git enrichment not run") when it doesn't.
 
 ## 6. Archive
 

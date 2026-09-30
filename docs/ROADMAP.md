@@ -77,14 +77,17 @@ Each item gets a short written finding in `M0_FINDINGS.md` and at least one fixt
 - [x] Performance: a 50 MB transcript parses in well under 3 s with bounded memory (measured 0.37 s, see M1 findings).
 - [x] Development entry point `src/dev/parse.ts` (Session JSON, or counts only with `--summary`). Not the product CLI.
 
-## M1b: Analytics, Receipt JSON, CLI commands
+## M1b: Analytics, Receipt JSON, git enrichment
 
-- [ ] Token and cost source selection follows `METRICS.md`: `cost-state` for completed non-fork sessions, otherwise the transcript (derived).
-- [ ] `analytics` computes every metric marked **MVP** in `METRICS.md` (except git metrics) with correct provenance. Unavailable inputs produce `null` + `unavailableReason`, and a test asserts no MVP metric is ever `0` because an input was missing.
-- [ ] Pricing table file with a date, used only when `cost-state` is absent. Tested against `cost-state.costUSD` on fixtures.
-- [ ] Receipt model (`ARCHITECTURE.md` §4) and `render/json` with `schemaVersion: 1`.
-- [ ] `claude-receipt --json`, `last`, `<sessionId>` (prefix), `list`. JSON output snapshot-tested per fixture.
-- [ ] A test asserts that Receipt JSON for a fixture contains none of the fixture's placeholder text.
+**Status: implemented (2026-10-01), awaiting review.** Git enrichment moved here from M4; the product CLI commands moved to M3 (M1b ships a development entry point only).
+
+- [x] Token and cost source selection follows `METRICS.md`: `cost-state` for completed, non-live, non-fork sessions (exact), otherwise the transcript (derived).
+- [x] `analytics` (`src/analytics/`) computes every metric marked **MVP** in `METRICS.md` with provenance. Unavailable inputs produce `null` + `unavailableReason`; tests assert the null-instead-of-0 cases (killed session, headless turns, git not run, no edits, no tool calls).
+- [x] Pricing table with a date (`src/analytics/pricing.ts`), used only when `cost-state` is unusable. Tested against `cost-state.costUSD` on every completed fixture (exact match).
+- [x] Receipt model (`src/receipt/types.ts`, `ARCHITECTURE.md` §4), schema validator (`src/receipt/validate.ts`) and `render/json` with `schemaVersion: 1`.
+- [x] `git/` returns `GitFacts` for the session window, read-only. Handles no git, non-repositories, missing directories, empty repositories (a true zero) and detached HEAD without errors. `commits.inWindow`, `commits.coAuthored`, `commits.byClaude` confirmation, `git.lines`. Commit messages and authors are never kept (test).
+- [x] A test asserts that Receipt JSON for every fixture contains none of the fixture's placeholder text, no raw-content fields and no presentation fields.
+- [x] Development entry point `src/dev/receipt.ts` (Receipt JSON, or provenance/null summary with `--summary`).
 
 ## M2: Local archive
 
@@ -95,21 +98,21 @@ Each item gets a short written finding in `M0_FINDINGS.md` and at least one fixt
 - [ ] `archiveSchemaVersion: 1`, with a migration harness in place (a no-op v1 migration test proving the mechanism).
 - [ ] A corrupt entry is skipped with a warning and never deleted.
 
-## M3: Terminal receipt
+## M3: Terminal receipt and CLI
 
+- [ ] Product CLI: `claude-receipt` (current/most recent session for the directory), `last`, `<sessionId>` (prefix), `list`, `--json` (the M1b Receipt JSON). Moved here from M1b.
 - [ ] `render/tty` renders the Receipt as a narrow receipt (~40 columns): header, Hard stats, Coding stats, Session lore, footer microcopy, and a `~` legend when heuristics are present.
-- [ ] Null metrics are omitted, never shown as `0`. Heuristic values always carry `~`.
+- [ ] Null metrics are omitted, never shown as `0`. Heuristic values always carry `~`; derived values carry their own distinct mark; exact values carry neither. A test asserts every rendered metric's mark matches its provenance, and a legend explains the marks in use (`METRICS.md` → Rendering rule).
 - [ ] Cost is labelled `API EQUIVALENT`. The words "spent", "paid", "charged" and "bill" appear nowhere (test).
 - [ ] Works with `NO_COLOR`, in non-TTY output (pipe), in Windows Terminal and PowerShell, and with wide characters in project names (alignment test with `string-width`).
 - [ ] `--redact` applies export redaction rules (`PRIVACY.md` §6).
 - [ ] Snapshot tests per fixture.
 
-## M4: Git enrichment → **v0.1 release**
+## M4: v0.1 release
 
-- [ ] `git/` returns `GitFacts` for the session window. Handles no git, non-repositories, empty repositories (no commits) and detached HEAD without errors.
-- [ ] `commits.inWindow`, `commits.coAuthored`, `commits.byClaude` confirmation, `git.lines`.
-- [ ] Commit messages and authors are never kept (test).
-- [ ] Release checklist: README updated with real commands and a real (redacted) sample; npm name confirmed; `npx claude-receipt` works on Windows, macOS and Linux; the privacy doc matches behaviour.
+Git enrichment was delivered in M1b.
+
+- [ ] Release checklist: README updated with real commands and a real (redacted) sample; npm name confirmed; packaging/build step for the TypeScript sources; `npx claude-receipt` works on Windows, macOS and Linux; the privacy doc matches behaviour.
 
 ---
 
@@ -127,6 +130,7 @@ Each item gets a short written finding in `M0_FINDINGS.md` and at least one fixt
 - [ ] Design system for the receipt (typography, separators, torn edges, paper texture, microcopy) agreed before code.
 - [ ] `render/svg` from the same Receipt model. PNG via resvg. Fonts bundled with licences checked.
 - [ ] Export redaction on by default. Golden-image tests.
+- [ ] Exact, derived and heuristic values are visually distinguishable in the image with the same meaning as in the terminal, with a legend (`METRICS.md` → Rendering rule).
 
 ### M7: Lore expansion and opt-in text features
 - [ ] `lore.patterns`, `lore.nightOwl`, metadata-only `lore.personality`, each rule documented in `METRICS.md`.

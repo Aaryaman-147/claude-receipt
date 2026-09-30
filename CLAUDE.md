@@ -10,7 +10,8 @@ Claude Receipt turns Claude Code sessions into receipts: hard stats, coding stat
 
 - M0 (format verification): done, see `docs/research/M0_FINDINGS.md`.
 - M1a (source adapter + normalized Session in `src/source/claude-code/`): implemented, see `docs/research/M1_FINDINGS.md`.
-- M1b onwards (analytics, Receipt, CLI, archive, renderers): not started. Don't build them unless the current task asks for it.
+- M1b (analytics in `src/analytics/`, Receipt model + validator in `src/receipt/`, Receipt JSON in `src/render/json.ts`, read-only git in `src/git/`): implemented.
+- M2 onwards (archive, terminal renderer, product CLI, visual receipt): not started. Don't build them unless the current task asks for it.
 
 ## Commands
 
@@ -18,11 +19,13 @@ Node ≥ 24 runs the TypeScript sources directly (no build step). Dev-only depen
 
 | Command | What it does |
 |---|---|
-| `npm test` | All tests: parser and command classification (`test/source/`), fixture safety |
+| `npm test` | All tests: parser (`test/source/`), analytics and Receipt contract (`test/analytics/`), git enrichment on throwaway repos (`test/git/`), fixture safety |
 | `npm run typecheck` | `tsc` in strict mode, no emit |
 | `node src/dev/parse.ts <main.jsonl>...` | Parse transcripts together (forks detected among them) and print Session JSON |
 | `node src/dev/parse.ts --session <id\|prefix>` / `--all` | Same for local sessions under `CLAUDE_CONFIG_DIR` or `~/.claude` |
 | `node src/dev/parse.ts … --summary` | Counts only. **Use this on real sessions**; full Session JSON contains paths and titles |
+| `node src/dev/receipt.ts <main.jsonl>...` / `--session <id>` / `--all` | Session → git (read-only) → Receipt JSON. Flags: `--no-git`, `--tz <zone>` |
+| `node src/dev/receipt.ts … --summary` | Provenance and null reasons per metric, no values. **Use this on real sessions** |
 | `node scripts/m0/build-fixtures.mjs` | Regenerate `fixtures/claude-code/2.1.283` from the M0 lab sessions (only on the machine that has them) |
 | `node scripts/anonymize-fixture.mjs <out-dir> <in.jsonl>…` | Anonymize transcripts into fixture candidates (review before committing) |
 | `node scripts/m0/watch-transcript.mjs <sessionId> [seconds]` | Sample a live transcript for partial writes |
@@ -50,6 +53,7 @@ source/claude-code  →  Session  →  analytics  →  Receipt  →  render/tty 
 - Every metric carries provenance: `exact | derived | heuristic`. Definitions are in `docs/METRICS.md`.
 - **Never invent, fake, pad or guess a metric.** If a value can't be determined, it is `null` with a reason, never `0`. Missing is not zero.
 - **Never present a heuristic as exact.** Renderers must visibly mark heuristic values (e.g. `~`).
+- **Exact, derived and heuristic stay visually and semantically distinguishable in every renderer** (terminal, SVG/PNG, aggregates, Wrapped). Derived and heuristic values, including the playful lore ones (rabbit hole, error streak, active time, test runs, Claude-authored commits), are never presented or worded as directly recorded facts. See `docs/METRICS.md` → Rendering rule.
 - A new metric needs an entry in `docs/METRICS.md` (source, provenance, calculation, limitations, privacy) in the same change.
 - Cost is **API-equivalent**. Never label it "spent", "paid", "charged" or "bill".
 - **No plan/subscription information.** It was removed from the product (see `docs/PRD.md` §4). Never read `~/.claude.json`.

@@ -18,7 +18,7 @@ It is **not** a token and cost tracker with a receipt skin. Tokens and cost are 
    - **Hard stats**: duration, models, tokens, API-equivalent cost, prompts, tool calls.
    - **Coding stats**: files, lines, languages, commands, tests, errors, commits.
    - **Session lore**: biggest rabbit hole, longest turn, peak hour, unusual patterns, personality.
-2. **Honest numbers.** Every metric has provenance (`exact | derived | heuristic`). Hard and coding stats are exact or derived wherever possible. Lore may be heuristic but is always marked as such. Unknown values are omitted, never shown as zero.
+2. **Honest numbers.** Every metric has provenance (`exact | derived | heuristic`). Hard and coding stats are exact or derived wherever possible. Lore may be heuristic but is always marked as such. The three provenances stay visually and semantically distinguishable on every surface: derived and heuristic values are never presented as recorded facts. Unknown values are omitted, never shown as zero.
 3. **Private by default.** Nothing leaves the machine. Default analytics read metadata, not conversation meaning. Text-based features are opt-in. Exports are redacted by default where appropriate.
 4. **Feels like a real receipt.** Narrow, monochrome, typographic, itemized, with playful microcopy. Not a dashboard squeezed into a rectangle.
 5. **History survives.** Claude Code deletes old transcripts (30 days by default). Claude Receipt archives computed metrics so long-term summaries remain possible.
