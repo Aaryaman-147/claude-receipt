@@ -164,6 +164,8 @@ assets/fonts/                IBM Plex Mono Regular and Bold (unmodified) + OFL-1
 
 ## Export (implemented in the PNG stage)
 
+History images (v0.2): `claude-receipt export all | week | month [--project] [--png | --svg] [-o <file>] [--no-redact]` writes the history as the same visual receipt (subtitle `itemized history`, a coverage header, no band), through `historyView` → `layoutView` → the same SVG and 2× PNG pipeline. It is redacted by default like any export (project key and top project names hidden, MCP tools grouped; `--no-redact` is the opt-out). Default names are `./claude-receipt-<period>.png` (`-project` added with `--project`; `-2`, `-3`, … if taken), never a project name or path; `--output`, overwrite refusal and `--no-archive` behave as for session exports.
+
 ```
 claude-receipt export [last | <session-id-prefix>] [--png | --svg] [-o | --output <file>] [--no-redact] [--no-archive]
 ```

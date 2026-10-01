@@ -275,3 +275,108 @@ test("privacy: history terminal and JSON output, redacted or not, hold no transc
   assert.ok(!/<(command|local-command|bash|task-notification|system-reminder)/.test(text));
   assert.ok(!/"(content|text|thinking|command|stdout|stderr|patch|message|prompt|description|uuid|requestId|agentId|title|cwd)"\s*:/.test(text));
 });
+
+// ---- export all | week | month (v0.2 milestone 4) ----
+
+const outDir = () => { const d = mkdtempSync(join(tmpdir(), "claude-receipt-history-export-")); made.push(d); return d; };
+const pngInfo = (b: Buffer) => { const t: string[] = []; for (let o = 8; o < b.length; o += 12 + b.readUInt32BE(o)) t.push(b.toString("latin1", o + 4, o + 8)); return { w: b.readUInt32BE(16), h: b.readUInt32BE(20), chunks: [...new Set(t)].sort() }; };
+const drawn = (svg: string) => svg.replace(/@font-face\{[^}]*\}/g, "");
+
+test("export all|week|month: a history image (PNG default, --svg), named by period, redacted by default", async () => {
+  const h = twoProjects();
+  for (const [cmd, label] of [["all", "ALL SESSIONS"], ["week", "LAST 7 DAYS"], ["month", "LAST 30 DAYS"]] as const) {
+    const dir = outDir();
+    const svg = await cli(h, ["export", cmd, "--svg"], { cwd: dir });
+    assert.equal(svg.code, 0, svg.err);
+    assert.equal(svg.out, `${join(dir, `claude-receipt-${cmd}.svg`)}\n`);
+    assert.match(svg.err, /history exported: 3 finished sessions/);
+    const text = drawn(readFileSync(join(dir, `claude-receipt-${cmd}.svg`), "utf8"));
+    assert.ok(text.includes(">itemized history</text>") && text.includes(`>${label}</text>`));
+    assert.ok(!/alpha|beta|work/.test(text), "redacted by default: no project names or paths");
+    const png = await cli(h, ["export", cmd], { cwd: dir });
+    assert.equal(png.code, 0, png.err);
+    const info = pngInfo(readFileSync(join(dir, `claude-receipt-${cmd}.png`)));
+    const height = Number(text.match(/height="(\d+)"/)![1]);
+    assert.deepEqual([info.w, info.h, info.chunks], [1248, height * 2, ["IDAT", "IEND", "IHDR"]]);
+  }
+});
+
+test("export history: --no-redact shows project names; --project with --redact shows no key, path or name; never overwrites", async () => {
+  const h = twoProjects();
+  const dir = outDir();
+  const raw2 = await cli(h, ["export", "all", "--svg", "--no-redact"], { cwd: dir });
+  assert.equal(raw2.code, 0, raw2.err);
+  assert.match(raw2.err, /history exported without redaction/);
+  assert.ok(drawn(readFileSync(join(dir, "claude-receipt-all.svg"), "utf8")).includes(">alpha</text>"), "top projects shown when not redacted");
+  // project-filtered (cwd = the project, a path that is never written to: --output goes to a temp dir)
+  const pd = outDir();
+  const proj = await cli(h, ["export", "week", "--project", "--svg", "-o", join(pd, "x.svg")], { cwd: "C:\\work\\alpha" });
+  assert.equal(proj.code, 0, proj.err);
+  const ptext = drawn(readFileSync(join(pd, "x.svg"), "utf8"));
+  assert.ok(ptext.includes(">THIS DIRECTORY</text>") && !/alpha|beta|work/.test(ptext), "project-filtered and redacted: no key, path or name");
+  // repeated exports get -2, -3; an existing --output is refused untouched
+  const rep = outDir();
+  for (let i = 0; i < 3; i++) assert.equal((await cli(h, ["export", "all", "--svg"], { cwd: rep })).code, 0);
+  assert.deepEqual(readdirSync(rep).sort(), ["claude-receipt-all-2.svg", "claude-receipt-all-3.svg", "claude-receipt-all.svg"]);
+  assert.equal(readFileSync(join(rep, "claude-receipt-all.svg"), "utf8"), readFileSync(join(rep, "claude-receipt-all-2.svg"), "utf8"), "deterministic");
+  writeFileSync(join(rep, "keep.png"), "precious");
+  const refused = await cli(h, ["export", "week", "-o", "keep.png"], { cwd: rep });
+  assert.deepEqual([refused.code, refused.out], [1, ""]);
+  assert.match(refused.err, /keep\.png already exists; not overwritten/);
+  assert.equal(readFileSync(join(rep, "keep.png"), "utf8"), "precious");
+});
+
+test("export history: the -project default name, --no-archive, no sessions, usage errors; session export unchanged", async () => {
+  const h = twoProjects();
+  // a project-filtered export from inside a real directory that is the project's cwd
+  const projDir = outDir();
+  const ph = home();
+  put(ph, "p", A, withCwd(raw("ordinary.jsonl"), projDir));
+  const pe = await cli(ph, ["export", "all", "--project", "--svg"], { cwd: projDir });
+  assert.equal(pe.code, 0, pe.err);
+  assert.equal(pe.out, `${join(projDir, "claude-receipt-all-project.svg")}\n`);
+  assert.ok(!drawn(readFileSync(join(projDir, "claude-receipt-all-project.svg"), "utf8")).includes(projDir.split(/[\\/]/).pop()!), "no directory name in the redacted image");
+  // --no-archive: exports without writing the archive
+  const ro = outDir();
+  const r = await cli(h, ["export", "all", "--svg", "--no-archive"], { cwd: ro });
+  assert.equal(r.code, 0, r.err);
+  assert.match(r.err, /nothing archived \(--no-archive\)/);
+  assert.ok(!existsSync(h.receiptHome));
+  // nothing in the period: exit 1, no file
+  const none = outDir();
+  const empty = await cli(h, ["export", "week"], { cwd: none, now: new Date("2027-01-01T00:00:00.000Z") });
+  assert.deepEqual([empty.code, empty.out], [1, ""]);
+  assert.match(empty.err, /no finished sessions in the last 7 days/);
+  assert.deepEqual(readdirSync(none), []);
+  for (const argv of [["export", "all", "--json"], ["export", "all", "week"], ["export", "week", "--redact", "--no-redact"], ["export", "last", "--project"]]) {
+    const u = await cli(h, argv, { cwd: none });
+    assert.deepEqual([u.code, u.out], [2, ""], argv.join(" "));
+  }
+  // session export is unchanged: a prefix, the 4-character redacted name
+  const s = outDir();
+  const se = await cli(h, ["export", "aaaa", "--svg"], { cwd: s });
+  assert.equal(se.out, `${join(s, "claude-receipt-aaaa.svg")}\n`);
+  assert.ok(drawn(readFileSync(join(s, "claude-receipt-aaaa.svg"), "utf8")).includes(">itemized session record</text>"));
+});
+
+test("privacy: exported history SVG/PNG files, redacted or not, hold no transcript text, telemetry or session ids", async () => {
+  const h = home();
+  const names = readdirSync(FIX).filter((f) => f.endsWith(".jsonl"));
+  const ids = names.map((_, i) => `${String(i).padStart(8, "0")}-0000-4000-8000-${String(i).padStart(12, "0")}`);
+  names.forEach((n, i) => put(h, `p${i % 3}`, ids[i]!, withCwd(raw(n), `C:\\Users\\someone\\secret-${i % 3}`)));
+  const telemetry = new Set(names.flatMap((n) => raw(n).match(/(?:msg|toolu|req)_fixture[0-9a-f]{12}|\ba[0-9a-f]{12}\b/g) ?? []));
+  const dir = outDir();
+  for (const cmd of ["all", "week", "month"]) for (const flags of [["--svg"], ["--svg", "--no-redact"], ["--png"], ["--png", "--no-redact"]]) {
+    const r = await cli(h, ["export", cmd, ...flags, "-o", `${cmd}${flags.join("")}.${flags[0]!.slice(2)}`], { cwd: dir });
+    assert.equal(r.code, 0, r.err);
+  }
+  for (const f of readdirSync(dir)) {
+    const buf = readFileSync(join(dir, f));
+    if (f.endsWith(".png")) { assert.deepEqual(pngInfo(buf).chunks, ["IDAT", "IEND", "IHDR"], f); continue; }
+    const svg = drawn(buf.toString("utf8"));
+    for (const t of telemetry) assert.ok(!svg.includes(t), `${f}: telemetry id`);
+    for (const id of ids) assert.ok(!svg.includes(id), `${f}: session id`);
+    assert.ok(!/x{3,}|someone|Users|<!--|<title|<desc|<metadata|data-/.test(svg), `${f}: transcript text, path or metadata`);
+    if (!f.includes("no-redact")) assert.ok(!/secret-\d/.test(svg), `${f}: redacted export shows a project name`);
+  }
+});

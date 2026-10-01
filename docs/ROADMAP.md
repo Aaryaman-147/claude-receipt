@@ -137,7 +137,7 @@ Git enrichment was delivered in M1b.
 - [x] Local calendar-day periods in the viewer's zone, tested across DST changes and a zone that skips midnight.
 - [x] Shared rendering view model (`src/render/view.ts`) for session and history receipts; v0.1 output byte-identical.
 - [x] `claude-receipt all | week | month [--project] [--json] [--redact] [--no-archive]` (terminal and JSON).
-- [ ] SVG/PNG export of a history.
+- [x] SVG/PNG export of a history (`export all | week | month [--project]`), redacted by default; session images byte-identical.
 - [ ] Synthetic 1,000 / 5,000-session archive benchmarks (decide whether a v0.2.x archive index is needed).
 
 ### M6: Visual receipt (SVG/PNG)
