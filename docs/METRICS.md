@@ -273,16 +273,52 @@ Privacy levels: **none** (numbers only), **meta** (names, paths or ids, which ar
 
 ---
 
-## Aggregate metrics (future: `--project`, `--week`, `--month`, `wrapped`)
+## Historical metrics (v0.2, M5: `all`, `week`, `month`)
 
-Computed only from archive entries (A), never from raw transcripts, so that they work after cleanup. The provenance of an aggregate is the weakest provenance of its inputs.
+Implemented in `src/aggregate/` (types in `types.ts`, contract check in `validate.ts`): `aggregate(receipts, { period, now, timeZone, projectKey })` turns session Receipts into a `HistoryReceipt` (`kind: "history"`, its own `schemaVersion` 1). It is pure (no I/O, no clock, no transcripts) and reads only Receipts, so it holds nothing a Receipt doesn't. The session Receipt is unchanged.
 
-| Id | Description | Provenance |
-|---|---|---|
-| `agg.sessions` | Session count | exact |
-| `agg.activeTime` | Sum of active time | heuristic |
-| `agg.tokens`, `agg.apiEquivalent` | Sums | as inputs |
-| `agg.topProjects`, `agg.topLanguages`, `agg.topTools` | Rankings | derived |
-| `agg.busiestDay`, `agg.peakHour`, `agg.streak` | Calendar patterns (local time) | derived |
-| `agg.longestSession`, `agg.biggestRabbitHole` | Records | as inputs |
-| `agg.coverage` | Which dates have archived data (gaps from before first use are shown, never filled in) | exact |
+**Inputs.** The CLI's candidate pool: archived finished sessions plus finished sessions built in the current sweep, at most one Receipt per session id (the pool is keyed by id; a duplicate is collapsed to the latest-ending copy and reported as a `duplicate-session` warning). Forks have their own id and their Receipt counts only their own activity, as in v0.1. *Known limitation:* a fork whose parent transcript had already disappeared when it was first archived includes the copied history (`ARCHITECTURE.md` §6), so its parent's work can be counted twice; this is not detectable and is not corrected.
+
+**Which sessions count.**
+- `all`: every finished session, including undated ones (no `startedAt`).
+- `week`: the last 7 local calendar days including today; `month`: the last 30. Local days are in the viewer's time zone; the period is `[since, until)` in UTC, from the local midnight that starts the first day to the local midnight after today (on a DST day that skips midnight, the day starts at its first existing instant).
+- A session belongs to the period containing its `startedAt`. A session resumed later still counts in its start period.
+- Undated sessions count only in `all`; live sessions never count. Both stay visible in `coverage` (`undated`, `liveExcluded`), and so do aggregated sessions whose transcript ended without a clean close (`incomplete`).
+- `--project` keeps only sessions whose `projectKey` equals the current directory's key.
+
+**Coverage** (always present): sessions, distinct projects, undated, live excluded, incomplete, first and last local start date, days with data, days in period (7, 30, or the first-to-last span for `all`), and the generator versions and time zones of the aggregated Receipts. A `mixed-time-zones` warning appears when those zones differ (peak-hour histograms are in each session's own zone). "All" covers only what Claude Receipt has seen: sessions Claude Code cleaned up before the first run are absent, never filled in.
+
+**Rules.**
+- Each metric records `covered: { sessions, of }`: how many aggregated sessions had a value. Sums and rankings use exactly those sessions and are **never extrapolated**.
+- A metric no session has is `null` with a reason, never `0`.
+- **Provenance** is the weakest of the contributing inputs (exact > derived > heuristic), and never stronger than the metric's floor below. A session whose value is null doesn't contribute and doesn't weaken it.
+- Dates in values are local calendar dates (`YYYY-MM-DD`) in the viewer's zone. No value carries a session id, title, path or prompt position.
+
+| Id | Value | Calculation | Provenance (floor) |
+|---|---|---|---|
+| `agg.duration.wall` | ms | Σ `session.duration.wall` | derived |
+| `agg.duration.active` | ms | Σ `session.duration.active` | heuristic |
+| `agg.api.duration` | ms | Σ `api.duration` | exact |
+| `agg.models` | `{model, sessions}[]` | Sessions using each model (from `models.used`), most first | exact |
+| `agg.tokens.input` / `.output` / `.cacheRead` / `.cacheWrite` | tokens | Σ of the session token metrics | exact |
+| `agg.cost.apiEquivalent` | USD | Σ `cost.apiEquivalent`: API-equivalent, never money spent | exact |
+| `agg.prompts`, `agg.toolCalls`, `agg.turns` | count | Σ | exact |
+| `agg.toolCalls.byName` | `{tool: count}` | Σ per tool name. Sensitive (MCP names) | exact |
+| `agg.lines.added` / `.removed` | lines | Σ | derived |
+| `agg.languages` | `{language, lines}[]` | Σ lines changed per language (file counts are per-session distinct and are not summed) | derived |
+| `agg.commands.count` | count | Σ | exact |
+| `agg.commands.topPrograms` | `{program, count}[]` | Σ per program | derived |
+| `agg.tests.runs` | count | Σ (detected) | heuristic |
+| `agg.errors.toolErrors`, `agg.interruptions` | count | Σ | exact |
+| `agg.commits.byClaude` | count | Σ (detected) | heuristic |
+| `agg.busiestDay` | `{date, sessions}` | The local date with the most session starts (ties: earliest) | derived |
+| `agg.peakHour` | hour 0–23 | Peak of the summed `lore.peakHour` `detail.byHour` histograms (kept even when a session's own peak is null); ties: earlier hour. `detail.byHour` holds the sum | derived |
+| `agg.streak` | `{days, from, to}` | Longest run of consecutive local dates with a session start (ties: earliest) | derived |
+| `agg.longestSession` | `{durationMs, date}` | Largest `session.duration.wall` (ties: earliest session) | derived |
+| `agg.rabbitHole` | `{toolCalls, durationMs, date}` | `lore.rabbitHole` with the most tool calls | derived |
+| `agg.longestTurn` | `{durationMs, date}` | Largest `lore.longestTurn` | derived |
+| `agg.errorStreak` | `{count, date}` | Largest `lore.errorStreak` | derived |
+| `agg.cacheHitRate` | ratio 0–1 | `Σ cacheRead ÷ Σ (input + cacheRead + cacheWrite)` over sessions with all three; recomputed from sums, never an average of ratios | derived |
+| `agg.topProjects` | `{project, sessions}[]` | Sessions per project key, named by project. Sensitive | derived |
+
+**Never aggregated** (session-only): `files.read`, `files.created`, `files.edited` (distinct files per session; summing double counts and the archive has no file identities), `files.mostEdited` (a per-session maximum of a path), `commits.inWindow`, `commits.coAuthored`, `git.lines` (repository facts for a time window: overlapping sessions in one repository would count the same commits twice), `lore.readEditRatio` (built from per-session distinct counts), `session.runs`, `session.duration.open`, titles and any text (including "favourite phrases"). No Wrapped or personality metric is part of v0.2.

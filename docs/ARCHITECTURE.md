@@ -16,8 +16,8 @@ Status: implemented through M3: `source/claude-code` and the Session (M1a), `ana
                                                                      Receipt ─────────► archive/ (ArchiveEntry, metrics only)
                                                           ┌─────────────┼──────────────┐          │
                                                           ▼             ▼              ▼          ▼
-                                                     render/tty    render/json    render/svg   aggregate ──► PeriodReceipt
-                                                                                  (future)     (future)      (week/month/wrapped)
+                                                     render/tty    render/json    render/svg   aggregate ──► HistoryReceipt
+                                                                               + render/png    (v0.2: Receipts from the archive and the current sweep → all/week/month; wrapped later)
 ```
 
 ## 2. Modules
@@ -29,7 +29,7 @@ Status: implemented through M3: `source/claude-code` and the Session (M1a), `ana
 | `analytics/` | Pure functions: `(Session, GitFacts?) → Receipt` (`buildReceipt`) | Session, GitFacts, pricing table, metric registry |
 | `receipt/` | The Receipt model, metric registry and schema validator | Nothing else (shared by analytics, renderers, archive) |
 | `archive/` | Read and write `ArchiveEntry` files, migrate old schema versions | Receipt, ArchiveEntry |
-| `aggregate/` (future) | `ArchiveEntry[] → PeriodReceipt` | ArchiveEntry |
+| `aggregate/` (v0.2) | `Receipt[]` + scope → `HistoryReceipt` (`src/aggregate/`): pure, no I/O, no clock, no transcripts; definitions in `METRICS.md` → Historical metrics | Receipt (the CLI candidate pool: archived and freshly built) |
 | `render/tty` | Receipt → terminal text (`src/render/tty.ts`): layout, optional ANSI, provenance marks, microcopy | Receipt (and `format`) |
 | `render/json` | Receipt → versioned JSON | Receipt |
 | `render/visual` + `render/svg` | Receipt → VisualDoc layout (`src/render/visual/`) → SVG string (`src/render/svg.ts`) → PNG bytes (`src/render/png.ts`, resvg-wasm at 2×); written by `claude-receipt export` (`src/cli/export.ts`) | Receipt (and the bundled font bytes, loaded by the caller via `src/assets.ts`) |

@@ -15,7 +15,8 @@ Claude Receipt turns Claude Code sessions into receipts: hard stats, coding stat
 - M3 (CLI in `src/cli/` with the archive sweep, terminal renderer in `src/render/tty.ts` + `format.ts`, redaction in `src/receipt/redact.ts`): implemented.
 - M6 (visual receipt): specified in `docs/VISUAL_RECEIPT.md` and being built ahead of M4/M5, in stages named "Visual Receipt — Spec / SVG / PNG / Packaging" (descriptive stage names, not milestone numbers; never renumber the official roadmap). All four stages are done (Spec, SVG, PNG, Packaging): `src/render/visual/spec.ts` (design tokens), `src/render/visual/layout.ts` (Receipt → VisualDoc), `src/render/svg.ts` (VisualDoc → SVG), `src/assets.ts` (loads the bundled fonts in `assets/fonts/`), `src/render/png.ts` (SVG → PNG via `@resvg/resvg-wasm`, the only runtime dependency), `src/cli/export.ts` (`claude-receipt export`, redacted by default). Packaging ships the fonts and resvg-wasm in the npm package (`docs/RELEASE.md`).
 - M4 (v0.1 release): packaged as `claude-receipt@0.1.0` (`tsc` build to `dist/`, MIT `LICENSE`), not published. Open: macOS/Linux install check, repository URL, publishing.
-- M5 (periods), M7+ (lore, Wrapped): not started. Don't build anything beyond the current task.
+- M5 (v0.2 historical receipts: `all`, `week`, `month`, `--project`): in progress. Milestone 1 done: the pure `src/aggregate/` module (`Receipt[]` + scope → `HistoryReceipt`, definitions in `docs/METRICS.md` → Historical metrics). Not built yet: the shared view-model rendering, the CLI commands and export, the benchmarks.
+- M7+ (lore, Wrapped): not started. Don't build anything beyond the current task.
 - The visual renderer is a pure consumer of the Receipt, exactly like the terminal renderer: no filesystem, git, archive, transcript or environment access, no new analytics, and the same provenance marks and copy from `src/render/format.ts`.
 
 ## Commands
