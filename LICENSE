@@ -19,11 +19,3 @@ AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
 LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
-
-Third-party components keep their own licences and are not covered by the MIT
-licence above:
-- IBM Plex Mono (assets/fonts/): SIL Open Font License 1.1, see
-  assets/fonts/IBMPlexMono-LICENSE.txt. Copyright IBM Corp., Reserved Font
-  Name "Plex". Bundled unmodified.
-- @resvg/resvg-wasm (npm dependency, installed separately): Mozilla Public
-  License 2.0.

@@ -138,7 +138,10 @@ Details: [docs/PRIVACY.md](docs/PRIVACY.md).
 
 ## Licence
 
-Claude Receipt is MIT-licensed ([LICENSE](LICENSE)). Bundled and dependent components keep their own licences: IBM Plex Mono is under the SIL Open Font License 1.1 ([assets/fonts/IBMPlexMono-LICENSE.txt](assets/fonts/IBMPlexMono-LICENSE.txt); Reserved Font Name "Plex"), and `@resvg/resvg-wasm` is under the Mozilla Public License 2.0.
+Claude Receipt is MIT-licensed ([LICENSE](LICENSE)). Third-party components keep their own licences and are not covered by the MIT licence:
+
+- **IBM Plex Mono** Regular and Bold (`assets/fonts/`), bundled unmodified: SIL Open Font License 1.1, see [assets/fonts/IBMPlexMono-LICENSE.txt](assets/fonts/IBMPlexMono-LICENSE.txt). Copyright IBM Corp., Reserved Font Name "Plex".
+- **`@resvg/resvg-wasm`**, the npm runtime dependency (installed separately, not bundled): Mozilla Public License 2.0.
 
 ## Disclaimer
 

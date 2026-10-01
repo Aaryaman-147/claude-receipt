@@ -3,6 +3,14 @@
   "version": "0.1.0",
   "description": "Local-first receipts for Claude Code sessions: hard stats, coding stats and session lore, in the terminal or as an image",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Aaryaman-147/claude-receipt.git"
+  },
+  "homepage": "https://github.com/Aaryaman-147/claude-receipt",
+  "bugs": {
+    "url": "https://github.com/Aaryaman-147/claude-receipt/issues"
+  },
   "type": "module",
   "bin": {
     "claude-receipt": "bin/claude-receipt.js"
