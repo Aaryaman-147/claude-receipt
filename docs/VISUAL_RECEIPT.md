@@ -8,7 +8,7 @@ The work is delivered in four implementation stages, named descriptively so they
 |---|---|---|
 | **Visual Receipt — Spec** | This document | Done |
 | **Visual Receipt — SVG** | Layout model, SVG renderer, bundled font, tests | Done |
-| **Visual Receipt — PNG** | PNG from the SVG, `claude-receipt export` | Not started |
+| **Visual Receipt — PNG** | PNG from the SVG, `claude-receipt export` | Done |
 | **Visual Receipt — Packaging** | Shipping the visual pieces (font files, WASM) in the npm package; optional polish | Not started |
 
 (These stages were drafted as "M4a–M4d" in conversation; those labels are not milestone numbers. The general npm release remains official **M4**.)
@@ -55,7 +55,7 @@ Receipt ──(redactReceipt, unless --no-redact)──► layoutReceipt() ─�
 - **Licences:** Claude Receipt itself will be MIT-licensed (a `LICENSE` file is added before packaging, official M4). Third-party licences stay with their components and ship with them: IBM Plex Mono under OFL-1.1, `@resvg/resvg-wasm` under MPL-2.0.
 
 **Glyph coverage (MVP).** The image supports exactly the glyphs present in the bundled IBM Plex Mono files. Coverage read from the bundled files (`IBMPlexMono-Regular.ttf` and `-Bold.ttf` from IBM's `@ibm/plex-mono@2.5.0` release; 1,049 code points each): Basic Latin, Latin-1 Supplement, Latin Extended-A and Box Drawing in full; Cyrillic 192 of 256; General Punctuation 41 of 112 (including `…` and `·`); Latin Extended-B 33 of 208; Greek effectively none; no CJK, Hangul, Kana, Arabic, Hebrew, Devanagari or emoji. CJK and other scripts outside it are **not** covered:
-- In the **PNG**, an unsupported character renders as the font's missing-glyph box.
+- In the **PNG**, an unsupported character renders as the font's missing-glyph box (verified: CJK, Hangul, Greek, Hebrew, Arabic, Devanagari, emoji and symbols such as `★` all draw the same box, pinned to their grid width). resvg-wasm cannot load system fonts, and it ignores the SVG's `@font-face` data: the PNG stage passes the bundled font bytes to it directly, so with no fonts passed it draws no text at all.
 - In the **SVG**, a browser may substitute a system font, so appearance depends on the viewer.
 - In both, the **layout cannot break**. Widths come from the shared display-width rule (wide East Asian and emoji characters take 2 columns, combining marks 0), and runs containing user-supplied strings are pinned to their computed width (`textLength`).
 - Claude Receipt does not claim broad Unicode support for images. The terminal receipt is unaffected, since the terminal uses its own fonts.
@@ -127,7 +127,7 @@ Copy is short, observational and non-evaluative. It makes no claims about produc
 - **The renderer doesn't know** whether its input was redacted; it draws what the Receipt contains.
 - **Redacted output** contains no project name or key, `cwd`, title, full session or fork-parent id (4 characters at most), or file base name (extension only). MCP tools are grouped.
 - **The SVG contains only what is drawn:** no `<title>`/`<desc>` with project data, no comments, no data attributes, no hidden elements, no timestamps beyond the drawn session times.
-- **The PNG carries no text metadata** (verified in the PNG stage).
+- **The PNG carries no metadata:** resvg 2.6.2 emits only `IHDR`, `IDAT` and `IEND` (8-bit RGBA, no `tEXt`/`iTXt`/`zTXt`, `tIME`, `iCCP`, `pHYs` or other chunks); a test parses the chunks of every export.
 - **Generated files are sensitive outputs** like any Receipt. Export never overwrites an existing file.
 
 ## 10. Edge cases
@@ -163,6 +163,21 @@ assets/fonts/                IBM Plex Mono Regular and Bold (unmodified) + OFL-1
 
 `VisualDoc = { width, height, backdrop, paper, items }`. Each item is one of: text run, rule, leader or band. The torn edges are part of `paper.outline`, one closed sawtooth path, so the paper fill and its shadow follow the tear. Text runs carry size, weight, ink, position and alignment; metric rows also carry the metric id and provenance. Font bytes are loaded by `cli/export.ts` and passed in; the layout needs only the font metrics in `spec.ts`.
 
+## Export (implemented in the PNG stage)
+
+```
+claude-receipt export [last | <session-id-prefix>] [--png | --svg] [-o | --output <file>] [--no-redact] [--no-archive]
+```
+
+- **Session choice** is exactly the receipt command's: no argument = the current directory's latest session (which may be live), else the latest anywhere; `last` = the latest completed session; a prefix must match exactly one session (ambiguous and unknown prefixes fail, exit 1).
+- **Format:** PNG by default (2×, 1248 px wide); `--svg` writes the canonical SVG (624 px logical width, fonts embedded).
+- **Redaction:** on by default. The selected Receipt goes through `redactReceipt()` before layout; `--no-redact` is the only opt-out. Even unredacted, an image holds only Receipt fields (never transcript text or telemetry ids).
+- **File name:** `./claude-receipt-<id>.png` (or `.svg`) in the current directory, where `<id>` is the receipt's session id as drawn: 4 characters when redacted, 8 with `--no-redact`. No project, path or title is ever part of the default name. If that name exists, `-2`, `-3`, … are tried; an earlier export is never replaced.
+- **`--output <file>`** names the file (relative to the current directory, or absolute). If it exists, export fails (exit 1) and leaves it untouched.
+- **Writes** use exclusive create (`wx`): an existing file is never overwritten or truncated; a failed write removes its own partial file.
+- **Output:** stdout gets only the written file's path; notes (redaction, live snapshot, archive status) go to stderr. Image bytes never go to the terminal. `--json` does not apply to export.
+- **Live sessions** can be exported: the image is a snapshot with the LIVE band and STATUS `LIVE`. As with every command, the sweep archives finished sessions only (`--no-archive` makes it read-only); exporting never archives a live session.
+
 ## 12. Test plan (SVG and PNG stages)
 
 - **Provenance:** every metric row in the layout carries the mark of its provenance, across all fixtures and a receipt with every metric filled. Heuristic values are never Bold. The legend lists exactly the marks used.
@@ -195,7 +210,7 @@ assets/fonts/                IBM Plex Mono Regular and Bold (unmodified) + OFL-1
 ## 14. Items to verify at the start of the SVG and PNG stages
 
 - ~~IBM Plex Mono's advance width and vertical metrics~~ Verified in the SVG stage: unitsPerEm 1000, advance 600 for every glyph, ascender 1025, descender −275 (both weights).
-- That resvg honours `textLength`/`lengthAdjust` on `<text>`. If not, the SVG stage pins user-string runs another way, still without overflow.
-- That resvg's PNG output is byte-identical across runs and platforms, and contains no text metadata chunks.
-- ~~The exact glyph coverage of the bundled files~~ Verified in the SVG stage and listed in §4; it goes into the README with the PNG/export stage, when users can produce images.
+- ~~That resvg honours `textLength`/`lengthAdjust`~~ Verified in the PNG stage: pinned runs (wide, combining, unsupported glyphs) fill exactly their grid width; tests compare decoded PNG ink against the layout model (values end at column 40, `*` in column 42, `~` leads, nothing outside the text area).
+- ~~That resvg's PNG output is byte-identical and has no metadata~~ Verified in the PNG stage on Windows (Node 26): identical across renders, across processes and across system time zones; a golden hash pins it. Other platforms are expected to match (WebAssembly, no system fonts) but have not been run yet.
+- ~~The exact glyph coverage of the bundled files~~ Verified in the SVG stage and listed in §4; summarized in the README.
 - In browsers, pinned runs (`textLength` with `lengthAdjust="spacingAndGlyphs"`) keep CJK and emoji fallback glyphs inside their grid width (checked in Chrome during the SVG stage).

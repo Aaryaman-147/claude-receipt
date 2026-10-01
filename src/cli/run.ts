@@ -1,6 +1,6 @@
 // The claude-receipt command (docs/PRD.md §5.4). Glue only: sweep → select → render.
 // Testable: all I/O goes through `io`. stdout carries only the requested output (a receipt,
-// a list, or JSON); notes, archive status and problems go to stderr.
+// a list, JSON, or the path of an exported file); notes, archive status and problems go to stderr.
 import { archiveDir } from "../archive/index.ts";
 import { redactReceipt } from "../receipt/redact.ts";
 import { GENERATOR, type Receipt } from "../receipt/types.ts";
@@ -8,6 +8,7 @@ import { duration, fit, localTime, MARK } from "../render/format.ts";
 import { renderJson } from "../render/json.ts";
 import { renderTerminal } from "../render/tty.ts";
 import { claudeHome, projectKey } from "../source/claude-code/index.ts";
+import { exportReceipt } from "./export.ts";
 import { refresh, sweep, type Candidate, type SweepReport } from "./sweep.ts";
 
 export interface Io {
@@ -22,18 +23,25 @@ export interface Io {
 }
 
 export const USAGE = `usage: claude-receipt [<session-id-prefix> | last | list] [options]
+       claude-receipt export [<session-id-prefix> | last] [--png | --svg] [-o <file>] [--no-redact]
 
   (no command)   receipt for the current or most recent session in this
                  directory, else the most recent session anywhere
   last           receipt for the most recent completed session anywhere
   list           recent sessions, newest first
   <prefix>       receipt for the session whose id starts with <prefix>
+  export         write that receipt as an image file (same session choice);
+                 PNG by default, redacted by default, never overwrites a file
 
 options:
   --json         machine-readable output (the Receipt JSON contract)
   --redact       hide project, paths, title; shorten ids (for sharing)
   --no-archive   read-only: don't write to the local archive
   --limit <n>    rows for list (default 20)
+  --png, --svg   export: image format (default --png)
+  -o, --output <file>
+                 export: file to create (default ./claude-receipt-<id>.png)
+  --no-redact    export: keep project, title and file names in the image
   -h, --help     this help
   -v, --version  version
 
@@ -42,10 +50,15 @@ Every run archives finished sessions to ~/.claude-receipt/archive
 ~/.claude (or $CLAUDE_CONFIG_DIR). Nothing leaves this machine.
 `;
 
-interface Args { command: "receipt" | "last" | "list"; prefix: string | null; json: boolean; redact: boolean; write: boolean; limit: number }
+interface Args {
+  command: "receipt" | "last" | "list"; prefix: string | null; json: boolean; redact: boolean; write: boolean; limit: number;
+  export: { format: "png" | "svg"; output: string | null; redact: boolean } | null;
+}
 
 function parse(argv: string[]): Args | { exit: number; out?: string; err?: string } {
-  const a: Args = { command: "receipt", prefix: null, json: false, redact: false, write: true, limit: 20 };
+  const a: Args = { command: "receipt", prefix: null, json: false, redact: false, write: true, limit: 20, export: null };
+  let format: "png" | "svg" | null = null, output: string | null = null, noRedact = false;
+  const usage = (msg: string) => ({ exit: 2, err: `${msg}\n\n${USAGE}` });
   const positional: string[] = [];
   for (let i = 0; i < argv.length; i++) {
     const x = argv[i]!;
@@ -54,15 +67,31 @@ function parse(argv: string[]): Args | { exit: number; out?: string; err?: strin
     if (x === "--json") a.json = true;
     else if (x === "--redact") a.redact = true;
     else if (x === "--no-archive") a.write = false;
-    else if (x === "--limit") {
+    else if (x === "--no-redact") noRedact = true;
+    else if (x === "--png" || x === "--svg") {
+      if (format && format !== x.slice(2)) return usage("choose one of --png or --svg");
+      format = x.slice(2) as "png" | "svg";
+    } else if (x === "-o" || x === "--output") {
+      const v = argv[++i];
+      if (!v || output !== null) return usage(`${x} needs one file path`);
+      output = v;
+    } else if (x === "--limit") {
       const n = Number(argv[++i]);
       if (!Number.isInteger(n) || n < 1) return { exit: 2, err: `--limit needs a positive whole number\n\n${USAGE}` };
       a.limit = n;
     } else if (x.startsWith("-")) return { exit: 2, err: `unknown option ${x}\n\n${USAGE}` };
     else positional.push(x);
   }
+  const isExport = positional[0] === "export";
+  if (isExport) positional.shift();
   if (positional.length > 1) return { exit: 2, err: `expected at most one command or session id, got ${positional.length}\n\n${USAGE}` };
   const p = positional[0];
+  if (isExport) {
+    if (p === "list" || p === "export") return usage(`export takes "last" or a session id prefix, not "${p}"`);
+    if (a.json) return usage("--json does not apply to export");
+    if (a.redact && noRedact) return usage("choose one of --redact or --no-redact");
+    a.export = { format: format ?? "png", output, redact: !noRedact };
+  } else if (format || output !== null || noRedact) return usage("--png, --svg, --output and --no-redact only apply to export");
   if (p === "last" || p === "list") a.command = p;
   else if (p !== undefined) a.prefix = p;
   if (a.command !== "list" && argv.includes("--limit")) return { exit: 2, err: `--limit only applies to list\n\n${USAGE}` };
@@ -169,15 +198,25 @@ export async function run(argv: string[], io: Io): Promise<number> {
   }
 
   pick = await refresh(pick!, opts); // a fresh receipt (with its title) when the transcript still exists
-  const receipt: Receipt = args.redact ? redactReceipt(pick.receipt) : pick.receipt;
-  if (args.json) io.stdout(renderJson(receipt));
-  else io.stdout(renderTerminal(receipt, { width: io.isTTY && io.columns ? io.columns : 40, color: io.isTTY && !io.env.NO_COLOR }));
-
   const s = pick.receipt.session;
   const note = s.live ? "not archived: the session is still running"
     : !pick.transcript ? "from the local archive (the transcript is no longer on disk)"
     : !args.write ? "not archived (--no-archive)"
     : ARCHIVE_NOTE[pick.archive];
+
+  if (args.export) {
+    // Redaction happens here, before layout: the visual renderer never knows whether it ran.
+    const { redact, format, output } = args.export;
+    const result = await exportReceipt(redact ? redactReceipt(pick.receipt) : pick.receipt, { format, output, cwd: io.cwd });
+    if ("error" in result) { io.stderr(`claude-receipt: ${result.error}\n`); return 1; }
+    io.stdout(`${result.path}\n`);
+    io.stderr(`claude-receipt: ${s.id.slice(0, redact ? 4 : 8)} exported${redact ? "" : " without redaction"}${s.live ? " (a snapshot: the session is still running)" : ""}; ${note}\n`);
+    return 0;
+  }
+
+  const receipt: Receipt = args.redact ? redactReceipt(pick.receipt) : pick.receipt;
+  if (args.json) io.stdout(renderJson(receipt));
+  else io.stdout(renderTerminal(receipt, { width: io.isTTY && io.columns ? io.columns : 40, color: io.isTTY && !io.env.NO_COLOR }));
   io.stderr(`claude-receipt: ${s.id.slice(0, args.redact ? 4 : 8)} ${note}\n`);
   return 0;
 }

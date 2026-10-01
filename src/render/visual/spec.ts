@@ -21,6 +21,7 @@ export const VISUAL = {
   leader: { pitch: 6, dot: 2 },
   band: { height: 36 },
   titleMaxLines: 3,
+  pngScale: 2, // rasterization only: 624 logical px → 1248 px PNG; never used by layout
   ellipsis: "…",
 } as const;
 

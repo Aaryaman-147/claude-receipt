@@ -13,17 +13,18 @@ Claude Receipt turns Claude Code sessions into receipts: hard stats, coding stat
 - M1b (analytics in `src/analytics/`, Receipt model + validator in `src/receipt/`, Receipt JSON in `src/render/json.ts`, read-only git in `src/git/`): implemented.
 - M2 (local metrics-only archive in `src/archive/`): implemented.
 - M3 (CLI in `src/cli/` with the archive sweep, terminal renderer in `src/render/tty.ts` + `format.ts`, redaction in `src/receipt/redact.ts`): implemented.
-- M6 (visual receipt): specified in `docs/VISUAL_RECEIPT.md` and being built ahead of M4/M5, in stages named "Visual Receipt — Spec / SVG / PNG / Packaging" (descriptive stage names, not milestone numbers; never renumber the official roadmap). Spec and SVG stages are done: `src/render/visual/spec.ts` (design tokens), `src/render/visual/layout.ts` (Receipt → VisualDoc), `src/render/svg.ts` (VisualDoc → SVG), `src/assets.ts` (loads the bundled fonts in `assets/fonts/`). PNG and `export` are not built.
+- M6 (visual receipt): specified in `docs/VISUAL_RECEIPT.md` and being built ahead of M4/M5, in stages named "Visual Receipt — Spec / SVG / PNG / Packaging" (descriptive stage names, not milestone numbers; never renumber the official roadmap). Spec, SVG and PNG stages are done: `src/render/visual/spec.ts` (design tokens), `src/render/visual/layout.ts` (Receipt → VisualDoc), `src/render/svg.ts` (VisualDoc → SVG), `src/assets.ts` (loads the bundled fonts in `assets/fonts/`), `src/render/png.ts` (SVG → PNG via `@resvg/resvg-wasm`, the only runtime dependency), `src/cli/export.ts` (`claude-receipt export`, redacted by default). Packaging is not started.
 - M4 (v0.1 release), M5 (periods), M7+ (lore, Wrapped): not started. Don't build anything beyond the current task.
 - The visual renderer is a pure consumer of the Receipt, exactly like the terminal renderer: no filesystem, git, archive, transcript or environment access, no new analytics, and the same provenance marks and copy from `src/render/format.ts`.
 
 ## Commands
 
-Node ≥ 24 runs the TypeScript sources directly (no build step). Dev-only dependencies: `typescript`, `@types/node` (`npm install`). No runtime dependencies. No linter is configured.
+Node ≥ 24 runs the TypeScript sources directly (no build step). Dev-only dependencies: `typescript`, `@types/node` (`npm install`). One runtime dependency: `@resvg/resvg-wasm` (pinned exactly; WebAssembly, no native code), used only by PNG export. No linter is configured.
 
 | Command | What it does |
 |---|---|
 | `npm test` | All tests: parser (`test/source/`), analytics and Receipt contract (`test/analytics/`), git enrichment on throwaway repos (`test/git/`), archive (`test/archive/`), renderer and snapshots (`test/render/`), CLI and sweep (`test/cli/`), fixture safety |
+| `node src/cli/main.ts export [last \| <prefix>] [--png \| --svg] [-o <file>] [--no-redact]` | Write a visual receipt file (redacted by default, never overwrites; see `docs/VISUAL_RECEIPT.md` → Export). Exports are sensitive files; in tests write them to a temp directory |
 | `node src/cli/main.ts [last \| list \| <prefix>] [--json] [--redact] [--no-archive]` | The product CLI (also `npm run receipt --`, or `claude-receipt` after `npm link`). Writes to the real archive unless `--no-archive` or `CLAUDE_RECEIPT_HOME` points elsewhere |
 | `npm run typecheck` | `tsc` in strict mode, no emit |
 | `node src/dev/parse.ts <main.jsonl>...` | Parse transcripts together (forks detected among them) and print Session JSON |

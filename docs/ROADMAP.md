@@ -141,7 +141,7 @@ Specification: `docs/VISUAL_RECEIPT.md`. M6 is being built ahead of M4 and M5; t
 
 - [x] **Visual Receipt — Spec:** design system agreed before code (`docs/VISUAL_RECEIPT.md`): 576 px paper on a 624 px canvas (flat backdrop `#E8E5DE`, flat paper `#FAF8F2`, no grain in the MVP), torn sawtooth edges, IBM Plex Mono on a 42-column grid, the terminal's provenance marks and copy.
 - [x] **Visual Receipt — SVG:** pure layout model and hand-written deterministic SVG from the same Receipt (the canonical visual output; no Satori, no frontend framework). IBM Plex Mono Regular and Bold bundled unmodified with their OFL-1.1 licence. Golden SVG tests.
-- [ ] **Visual Receipt — PNG:** PNG rendered from the SVG with `@resvg/resvg-wasm` (pinned) at 2× (1248 px wide). `claude-receipt export`, redacted by default via `redactReceipt()`, with one opt-out, `--no-redact`. PNG determinism and privacy tests.
+- [x] **Visual Receipt — PNG:** PNG rendered from the SVG with `@resvg/resvg-wasm` (pinned) at 2× (1248 px wide). `claude-receipt export`, redacted by default via `redactReceipt()`, with one opt-out, `--no-redact`. PNG determinism and privacy tests.
 - [ ] Exact, derived and heuristic values are visually distinguishable in the image with the same meaning as in the terminal, with a legend (`METRICS.md` → Rendering rule).
 - [ ] **Visual Receipt — Packaging:** fonts, licence files and the WASM binary ship in the npm package (coordinated with M4); optional polish such as paper grain only if it doesn't harm readability.
 - Image glyph coverage is limited to IBM Plex Mono's; no CJK fallback font is bundled.

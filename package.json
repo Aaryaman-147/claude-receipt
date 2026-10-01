@@ -19,5 +19,8 @@
   },
   "bin": {
     "claude-receipt": "bin/claude-receipt.js"
+  },
+  "dependencies": {
+    "@resvg/resvg-wasm": "2.6.2"
   }
 }

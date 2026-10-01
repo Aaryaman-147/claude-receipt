@@ -39,11 +39,11 @@ plain    recorded directly
 
 ## Status
 
-**Experimental, pre-release (M3).** It parses Claude Code's local session files, computes a Receipt, keeps a local metrics-only archive, and prints a terminal receipt. It is not published to npm yet (packaging is M4), so run it from a checkout. Image receipts, weekly/monthly summaries and Wrapped come later ([roadmap](docs/ROADMAP.md)).
+**Experimental, pre-release.** It parses Claude Code's local session files, computes a Receipt, keeps a local metrics-only archive, prints a terminal receipt, and exports the receipt as a PNG or SVG image. It is not published to npm yet (packaging is M4), so run it from a checkout. Weekly/monthly summaries and Wrapped come later ([roadmap](docs/ROADMAP.md)).
 
 ## Usage
 
-Requires Node 24 or newer. From a checkout:
+Requires Node 24 or newer. From a checkout, run `npm install` once (it installs the one runtime dependency, `@resvg/resvg-wasm`, used for PNG export), then:
 
 ```
 node src/cli/main.ts                   # current or most recent session in this directory
@@ -57,6 +57,20 @@ node src/cli/main.ts last --redact     # hide project, paths and title for shari
 `npm link` in the checkout installs a `claude-receipt` command with the same arguments.
 
 Every run also archives finished sessions to `~/.claude-receipt/archive/` (metrics only, no conversation text), so they survive Claude Code's transcript cleanup. `--no-archive` makes a run read-only. `CLAUDE_CONFIG_DIR` and `CLAUDE_RECEIPT_HOME` relocate the Claude Code data and the archive.
+
+### Shareable image
+
+```
+node src/cli/main.ts export                    # PNG of the current/most recent session, redacted
+node src/cli/main.ts export last --svg         # the canonical SVG instead
+node src/cli/main.ts export <session-prefix> -o my-receipt.png
+node src/cli/main.ts export --no-redact        # keep project, title and file names
+```
+
+- The default is a **PNG at 2× (1248 px wide)**, rendered from the same SVG that `--svg` writes. Session choice is the same as for the terminal receipt (`last`, a prefix, or the current directory's latest session; a live session is exported as a snapshot marked LIVE).
+- **Redacted by default:** no project name, paths, session title or file names (the most-edited file shows only its extension), and the session id is cut to 4 characters. `--no-redact` is the only opt-out. No image ever contains prompts, responses, commands or other conversation text.
+- The file goes to `./claude-receipt-<id>.png` (`-2`, `-3`, … if that exists) or to `--output <file>`. **Existing files are never overwritten**: an existing `--output` path makes the export fail. The path is printed on stdout.
+- **Text coverage:** images use the bundled IBM Plex Mono (OFL-1.1): Latin (including accented Western and Central European letters), Cyrillic and common punctuation. Other scripts (Chinese, Japanese, Korean, Greek, Arabic, Hebrew, Devanagari) and emoji show as empty boxes in the PNG; the layout stays intact. In the SVG, a viewer may substitute its own font for those characters.
 
 On the receipt, plain values were recorded by Claude Code, values ending in `*` were computed from recorded data, and values starting with `~` are estimates.
 

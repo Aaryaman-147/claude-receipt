@@ -342,3 +342,160 @@ test("privacy: archive files and every CLI output hold no transcript text, telem
   assert.ok(!/"(content|text|command|stdout|stderr|patch|message|prompt|description|uuid|requestId|agentId)"\s*:/.test(text));
   for (const f of files(h.archive)) assert.equal(JSON.parse(readFileSync(join(h.archive, f), "utf8")).receipt.session.title, null);
 });
+
+// ---- export (visual receipt files) ----
+
+const outDir = () => mkdtempSync(join(tmpdir(), "claude-receipt-export-"));
+const pngSize = (b: Buffer) => [b.readUInt32BE(16), b.readUInt32BE(20)];
+const pngChunks = (b: Buffer) => { const t: string[] = []; for (let o = 8; o < b.length; o += 12 + b.readUInt32BE(o)) t.push(b.toString("latin1", o + 4, o + 8)); return [...new Set(t)]; };
+const noFonts = (svg: string) => svg.replace(/@font-face\{[^}]*\}/g, "");
+
+test("export: PNG by default, redacted by default, named by the 4-character id, path on stdout", async () => {
+  const h = home(), dir = outDir();
+  put(h, "p", A, raw("ordinary.jsonl"));
+  const r = await cli(h, ["export"], dir);
+  assert.equal(r.code, 0, r.err);
+  const file = join(dir, "claude-receipt-aaaa.png");
+  assert.equal(r.out, `${file}\n`);
+  assert.match(r.err, /aaaa exported; saved to the local archive/);
+  assert.ok(!r.err.includes("aaaa1111"), "notes use the redacted id too");
+  const png = readFileSync(file);
+  const [w, ht] = pngSize(png);
+  assert.equal(w, 1248);
+  assert.ok(ht! > 2000 && ht! % 2 === 0, "2× of a whole-pixel layout height");
+  assert.deepEqual(pngChunks(png).sort(), ["IDAT", "IEND", "IHDR"]);
+  assert.deepEqual(files(dir), ["claude-receipt-aaaa.png"]);
+});
+
+test("export --svg: the canonical SVG, redacted unless --no-redact", async () => {
+  const h = home(), dir = outDir();
+  put(h, "p", A, withCwd(raw("ordinary.jsonl"), "C:\\work\\secret-project"));
+  const red = await cli(h, ["export", "--svg"], dir);
+  assert.equal(red.code, 0, red.err);
+  const svg = noFonts(readFileSync(join(dir, "claude-receipt-aaaa.svg"), "utf8"));
+  assert.ok(svg.startsWith("<svg xmlns=\"http://www.w3.org/2000/svg\" width=\"624\""));
+  for (const s of ["secret-project", "work", "PROJECT", A, "aaaa1111", "file1"]) assert.ok(!svg.includes(s), `redacted export leaks ${s}`);
+  assert.ok(svg.includes(">aaaa</text>") && svg.includes(">*.txt</text>"));
+  const raw2 = await cli(h, ["export", "--svg", "--no-redact"], dir);
+  assert.equal(raw2.code, 0, raw2.err);
+  assert.match(raw2.err, /aaaa1111 exported without redaction/);
+  const full = noFonts(readFileSync(join(dir, "claude-receipt-aaaa1111.svg"), "utf8"));
+  assert.ok(full.includes(">secret-project</text>") && full.includes(">aaaa1111</text>") && full.includes(">file1.txt</text>"));
+  assert.ok(!full.includes(A), "never the full session id");
+});
+
+test("export selects sessions exactly like the receipt command: default, last, prefix, ambiguous, unknown", async () => {
+  const h = home(), dir = outDir();
+  put(h, "p", A, raw("ordinary.jsonl"));
+  put(h, "p", B, raw("killed.jsonl")); // newest, live
+  put(h, "q", "aaaa9999-0000-4000-8000-000000000009", raw("no-tools.jsonl"));
+  markLive(h, B);
+  const d = await cli(h, ["export", "--svg", "-o", "default.svg"], dir);
+  assert.equal(d.code, 0, d.err);
+  const recv = await cli(h, [], dir);
+  assert.ok(readFileSync(join(dir, "default.svg"), "utf8").includes(`>${recv.out.match(/SESSION \.+ (\w{4})/)![1]}</text>`), "same pick as the receipt command");
+  const last = await cli(h, ["export", "last", "--svg", "-o", "last.svg"], dir);
+  assert.equal(last.code, 0, last.err);
+  assert.ok(!readFileSync(join(dir, "last.svg"), "utf8").includes("LIVE"), "last never picks a live session");
+  const pre = await cli(h, ["export", "aaaa1", "--svg", "-o", "pre.svg"], dir);
+  assert.equal(pre.code, 0, pre.err);
+  assert.ok(readFileSync(join(dir, "pre.svg"), "utf8").includes(">aaaa</text>"));
+  const amb = await cli(h, ["export", "aaaa", "-o", "amb.png"], dir);
+  assert.deepEqual([amb.code, amb.out], [1, ""]);
+  assert.match(amb.err, /"aaaa" matches 2 sessions/);
+  const unknown = await cli(h, ["export", "ffff", "-o", "unknown.png"], dir);
+  assert.deepEqual([unknown.code, unknown.out], [1, ""]);
+  assert.match(unknown.err, /no session matches "ffff"/);
+  assert.deepEqual(files(dir), ["default.svg", "last.svg", "pre.svg"]);
+});
+
+test("export never overwrites: an explicit existing path fails untouched; repeated default exports get -2, -3", async () => {
+  const h = home(), dir = outDir();
+  put(h, "p", A, raw("ordinary.jsonl"));
+  writeFileSync(join(dir, "keep.png"), "precious");
+  const r = await cli(h, ["export", "-o", "keep.png"], dir);
+  assert.deepEqual([r.code, r.out], [1, ""]);
+  assert.match(r.err, /keep\.png already exists; not overwritten/);
+  assert.equal(readFileSync(join(dir, "keep.png"), "utf8"), "precious");
+  for (let i = 0; i < 3; i++) assert.equal((await cli(h, ["export", "--svg"], dir)).code, 0);
+  assert.deepEqual(files(dir), ["claude-receipt-aaaa-2.svg", "claude-receipt-aaaa-3.svg", "claude-receipt-aaaa.svg", "keep.png"]);
+  const [a, b] = ["claude-receipt-aaaa.svg", "claude-receipt-aaaa-2.svg"].map((f) => readFileSync(join(dir, f), "utf8"));
+  assert.equal(a, b, "the same receipt exports to the same bytes");
+  const p1 = await cli(h, ["export", "-o", "one.png"], dir), p2 = await cli(h, ["export", "-o", "two.png"], dir);
+  assert.equal(p1.code + p2.code, 0);
+  assert.ok(readFileSync(join(dir, "one.png")).equals(readFileSync(join(dir, "two.png"))), "repeated PNG exports are byte-identical");
+  const abs = join(outDir(), "elsewhere.png");
+  assert.equal((await cli(h, ["export", "--output", abs], dir)).out, `${abs}\n`, "absolute --output");
+});
+
+test("export write failures are reported, exit 1, and leave nothing behind", async () => {
+  const h = home(), dir = outDir();
+  put(h, "p", A, raw("ordinary.jsonl"));
+  const missing = await cli(h, ["export", "-o", join("no", "such", "dir.png")], dir);
+  assert.deepEqual([missing.code, missing.out], [1, ""]);
+  assert.match(missing.err, /could not write .*dir\.png: ENOENT/);
+  mkdirSync(join(dir, "a-directory.png"));
+  const isDir = await cli(h, ["export", "-o", "a-directory.png"], dir);
+  assert.deepEqual([isDir.code, isDir.out], [1, ""]);
+  assert.match(isDir.err, /already exists; not overwritten|could not write/);
+  assert.deepEqual(files(dir), ["a-directory.png"]);
+  assert.deepEqual(files(join(dir, "a-directory.png")), []);
+});
+
+test("export of a live session: a snapshot with the LIVE band; the live session is not archived", async () => {
+  const h = home(), dir = outDir();
+  put(h, "p", A, raw("killed.jsonl"));
+  markLive(h, A);
+  const r = await cli(h, ["export", "--svg"], dir);
+  assert.equal(r.code, 0, r.err);
+  assert.match(r.err, /aaaa exported \(a snapshot: the session is still running\); not archived: the session is still running/);
+  const svg = readFileSync(join(dir, "claude-receipt-aaaa.svg"), "utf8");
+  assert.ok(svg.includes(">LIVE · STILL RUNNING</text>") && svg.includes(">LIVE</text>"));
+  assert.ok(!existsSync(h.receiptHome), "exporting archives nothing new");
+  assert.equal((await cli(h, ["export", "last"], dir)).code, 1, "last still needs a completed session");
+  assert.deepEqual(files(dir), ["claude-receipt-aaaa.svg"]);
+});
+
+test("export with no sessions, and export usage errors", async () => {
+  const h = home(), dir = outDir();
+  const none = await cli(h, ["export"], dir);
+  assert.deepEqual([none.code, none.out], [1, ""]);
+  assert.match(none.err, /no Claude Code sessions found/);
+  assert.deepEqual(files(dir), []);
+  for (const argv of [["--png"], ["last", "--no-redact"], ["-o", "x.png"], ["export", "list"], ["export", "--json"], ["export", "--png", "--svg"], ["export", "--redact", "--no-redact"], ["export", "-o"], ["export", "a", "b"]]) {
+    const r = await cli(h, argv, dir);
+    assert.deepEqual([r.code, r.out], [2, ""], argv.join(" "));
+    assert.match(r.err, /usage: claude-receipt/);
+  }
+  assert.match((await cli(h, ["--help"])).out, /claude-receipt export \[<session-id-prefix> \| last\] \[--png \| --svg\]/);
+  assert.deepEqual(files(dir), []);
+});
+
+test("privacy: exported SVG and PNG files, redacted or not, hold no transcript text, telemetry ids or metadata", async () => {
+  const h = home(), dir = outDir();
+  const names = readdirSync(FIX).filter((f) => f.endsWith(".jsonl"));
+  const ids = names.map((_, i) => `${String(i).padStart(8, "0")}-0000-4000-8000-${String(i).padStart(12, "0")}`);
+  names.forEach((n, i) => put(h, `p${i % 3}`, ids[i]!, raw(n)));
+  const telemetry = new Set(names.flatMap((n) => raw(n).match(/(?:msg|toolu|req)_fixture[0-9a-f]{12}|\ba[0-9a-f]{12}\b/g) ?? []));
+  assert.ok(telemetry.size > 10);
+  let exported = 0;
+  for (const [i, id] of ids.entries()) {
+    for (const flags of [["--svg"], ["--svg", "--no-redact"], ["--png"], ["--png", "--no-redact"]]) {
+      const r = await cli(h, ["export", id, ...flags, "-o", `${i}${flags.join("")}.${flags[0]!.slice(2)}`], dir);
+      if (r.code === 0) exported++;
+      else assert.match(r.err, /no session matches/, r.err); // an empty transcript has no session
+    }
+  }
+  assert.ok(exported >= 40, `${exported} exports`);
+  for (const f of files(dir)) {
+    const buf = readFileSync(join(dir, f));
+    if (f.endsWith(".png")) { assert.deepEqual(pngChunks(buf).sort(), ["IDAT", "IEND", "IHDR"], f); continue; }
+    const svg = noFonts(buf.toString("utf8"));
+    for (const t of telemetry) assert.ok(!svg.includes(t), `${f}: telemetry id ${t}`);
+    assert.ok(!/x{3,}/.test(svg), `${f}: placeholder transcript text`);
+    assert.ok(!/<(command|local-command|bash|task-notification|system-reminder)|<!--|<title|<desc|<metadata|data-/.test(svg), `${f}: tag or metadata`);
+    assert.ok(!/\b(content|thinking|stdout|stderr|structuredPatch|requestId|agentId|toolUseResult|parentUuid)\b/.test(svg), `${f}: raw field`);
+    for (const id of ids) assert.ok(!svg.includes(id), `${f}: full session id`);
+    if (!f.includes("no-redact")) assert.ok(!/project|PROJECT|fixture/.test(svg), `${f}: redacted export shows the project`);
+  }
+});

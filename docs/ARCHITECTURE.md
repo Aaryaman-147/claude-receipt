@@ -32,7 +32,7 @@ Status: implemented through M3: `source/claude-code` and the Session (M1a), `ana
 | `aggregate/` (future) | `ArchiveEntry[] → PeriodReceipt` | ArchiveEntry |
 | `render/tty` | Receipt → terminal text (`src/render/tty.ts`): layout, optional ANSI, provenance marks, microcopy | Receipt (and `format`) |
 | `render/json` | Receipt → versioned JSON | Receipt |
-| `render/visual` + `render/svg` | Receipt → VisualDoc layout (`src/render/visual/`) → SVG string (`src/render/svg.ts`); PNG is a later stage | Receipt (and the bundled font bytes, loaded by the caller via `src/assets.ts`) |
+| `render/visual` + `render/svg` | Receipt → VisualDoc layout (`src/render/visual/`) → SVG string (`src/render/svg.ts`) → PNG bytes (`src/render/png.ts`, resvg-wasm at 2×); written by `claude-receipt export` (`src/cli/export.ts`) | Receipt (and the bundled font bytes, loaded by the caller via `src/assets.ts`) |
 | `cli` | `src/cli/`: argument parsing, the archive sweep, choosing a session, wiring the above | Everything, but only as glue |
 
 Shared helpers used by several renderers (duration and number formatting, labels and microcopy keyed by metric id, provenance marks and legend) live in one small `format` module (`src/render/format.ts`), so TTY and SVG say the same things. Export redaction (`PRIVACY.md` §6) is a pure Receipt → Receipt transform (`src/receipt/redact.ts`) shared by `--redact` in text and JSON.
