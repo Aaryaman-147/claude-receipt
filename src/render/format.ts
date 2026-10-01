@@ -50,7 +50,10 @@ export const SECTION_TITLES = { hard: "HARD STATS", coding: "CODING STATS", lore
 // The only marks, and what they mean (docs/METRICS.md → Rendering rule).
 export const MARK = { derived: " *", heuristicPrefix: "~" } as const;
 export const markFor = (p: Provenance): "" | "*" | "~" => (p === "derived" ? "*" : p === "heuristic" ? "~" : "");
-// Each legend line fits the narrowest receipt (28 columns).
+// Primary values, emphasized in place (never reordered); a heuristic value is never emphasized.
+export const PRIMARY: ReadonlySet<string> = new Set(["session.duration.wall", "tokens.input", "tokens.output", "cost.apiEquivalent", "lines.added", "lines.removed"]);
+// Legend order, and each legend line fits the narrowest receipt (28 columns).
+export const LEGEND_ORDER: readonly Provenance[] = ["exact", "derived", "heuristic"];
 export const LEGEND: Record<Provenance, string> = {
   exact: "plain    recorded directly",
   derived: "  *      computed from data",

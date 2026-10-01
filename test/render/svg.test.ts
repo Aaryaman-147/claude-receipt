@@ -49,7 +49,7 @@ function assertProvenance(r: Receipt) {
   const byId = new Map(all(r).map((m) => [m.id, m]));
   const tagged = texts(doc).filter((t) => t.metricId);
   for (const t of tagged) {
-    const m = byId.get(t.metricId!)!;
+    const m = byId.get(t.metricId as MetricId)!;
     assert.equal(t.provenance, m.provenance, `${t.metricId}: provenance carried`);
     if (t.part === "value") {
       const want = m.provenance === "derived" ? "*" : m.provenance === "heuristic" ? "~" : "";
@@ -306,9 +306,9 @@ test("purity: the Receipt is not mutated; layout and SVG modules import no I/O",
   toSvg(layoutReceipt(deepFreeze({ ...r, session: { ...r.session, live: true } })), fonts);
   toSvg(layoutReceipt(deepFreeze(r)), fonts);
   assert.equal(JSON.stringify(r), before);
-  for (const f of ["src/render/visual/layout.ts", "src/render/visual/spec.ts", "src/render/svg.ts", "src/render/format.ts"]) {
+  for (const f of ["src/render/visual/layout.ts", "src/render/visual/spec.ts", "src/render/svg.ts", "src/render/format.ts", "src/render/view.ts"]) {
     const imports = [...readFileSync(f, "utf8").matchAll(/^import[^;]*?from "([^"]+)"/gm)].map((m) => m[1]);
-    for (const i of imports) assert.match(i!, /^\.\.?\/(\.\.\/receipt\/types|receipt\/types|format|spec|visual\/layout|visual\/spec|layout)\.ts$/, `${f} imports ${i}`);
+    for (const i of imports) assert.match(i!, /^\.\.?\/(\.\.\/receipt\/types|receipt\/types|format|view|spec|visual\/layout|visual\/spec|layout)\.ts$/, `${f} imports ${i}`);
     assert.ok(!/\b(process\.|Date\.now|new Date\(\)|Math\.random|require\()/.test(readFileSync(f, "utf8")), `${f}: ambient input`);
   }
 });

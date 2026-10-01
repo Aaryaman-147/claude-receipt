@@ -1,13 +1,11 @@
-// Terminal receipt: Receipt → string. Reads nothing but the Receipt it is given (no files, no
-// clock, no git, no archive), never mutates it, and is deterministic. Plain ASCII is the base;
-// ANSI (bold/dim) is an optional layer. Provenance is always visible (docs/METRICS.md →
-// Rendering rule): exact = unmarked, derived = " *" suffix, heuristic = "~" prefix, plus a legend.
-// Words and values come from ./format.ts, shared with the visual receipt.
-import type { MetricId, Provenance, Receipt, Section } from "../receipt/types.ts";
-import {
-  COST_NOTE, LEGEND, LIVE_TERMINAL, MARK, SECTION_TITLES, SUBTITLE, TITLE,
-  displayWidth, fit, footerFor, identityRows, isShown, metricRows, timesText, unavailableText, wrapWords,
-} from "./format.ts";
+// Terminal receipt: ReceiptView → string. Reads nothing but the view it is given (no files, no
+// clock, no git, no archive) and is deterministic. Plain ASCII is the base; ANSI (bold/dim) is an
+// optional layer. Provenance is always visible (docs/METRICS.md → Rendering rule): exact =
+// unmarked, derived = " *" suffix, heuristic = "~" prefix, plus a legend. The view (./view.ts)
+// says what to print; this file decides how it fits 28..40 columns.
+import type { Provenance, Receipt } from "../receipt/types.ts";
+import { LEGEND, LIVE_TERMINAL, MARK, displayWidth, fit, wrapWords } from "./format.ts";
+import { sessionView, type ReceiptView } from "./view.ts";
 
 export interface RenderOptions {
   width?: number; // columns; clamped to 28..40 (default 40)
@@ -16,12 +14,14 @@ export interface RenderOptions {
 
 export interface Line {
   text: string; // plain text (no ANSI)
-  metricId?: MetricId; // set on lines that show a metric value
+  metricId?: string; // set on lines that show a metric value
   provenance?: Provenance;
   value?: string; // the formatted value shown on this line, without marks
 }
 
-export function renderLines(receipt: Receipt, opts: RenderOptions = {}): Line[] {
+const BAND = { live: LIVE_TERMINAL } as const;
+
+export function renderViewLines(view: ReceiptView, opts: RenderOptions = {}): Line[] {
   const W = Math.max(28, Math.min(40, Math.floor(opts.width ?? 40)));
   const out: Line[] = [];
   const push = (text: string, meta: Omit<Line, "text"> = {}) => out.push({ text: text.trimEnd(), ...meta });
@@ -37,47 +37,41 @@ export function renderLines(receipt: Receipt, opts: RenderOptions = {}): Line[] 
     push(`${" ".repeat(Math.max(0, W - displayWidth(right)))}${fit(right, W)}`, meta);
   };
   const rule = (ch: string) => push(ch.repeat(W));
-  const s = receipt.session, tz = receipt.context.timeZone;
 
   push("/\\".repeat(W).slice(0, W));
   push("");
-  push(center(TITLE.split("").join(" ")));
-  push(center(SUBTITLE));
+  push(center(view.title.split("").join(" ")));
+  push(center(view.subtitle));
   rule("=");
-  for (const r of identityRows(s, tz)) item(r.label, fit(r.value, W - r.label.length - 6), "exact", {});
-  if (s.title) { push(""); for (const l of wrapWords(`"${s.title}"`, W)) push(l); }
-  if (s.live) { push(""); push(center(LIVE_TERMINAL)); }
+  for (const r of view.header) item(r.label, fit(r.value, W - r.label.length - 6), r.provenance, {});
+  if (view.note) { push(""); for (const l of wrapWords(view.note, W)) push(l); }
+  if (view.band) { push(""); push(center(BAND[view.band])); }
 
-  const used = new Set<Provenance>();
-  let unavailable = 0, costShown = false;
-  for (const section of ["hard", "coding", "lore"] as Section[]) {
-    const shown = receipt.sections[section].filter(isShown);
-    unavailable += receipt.sections[section].filter((m) => m.value === null).length;
-    if (!shown.length) continue;
+  for (const section of view.sections) {
     push("");
-    const title = `-- ${SECTION_TITLES[section]} `;
+    const title = `-- ${section.title} `;
     push(`${title}${"-".repeat(Math.max(0, W - title.length))}`);
-    for (const m of shown) {
-      const { heading, rows } = metricRows(m);
-      used.add(m.provenance);
-      if (m.id === "cost.apiEquivalent") costShown = true;
-      if (heading) push(heading, { metricId: m.id, provenance: m.provenance });
-      for (const r of rows) item(r.label, r.value, m.provenance, { metricId: m.id, provenance: m.provenance, value: r.value });
+    for (const e of section.entries) {
+      if (e.heading) push(e.heading, { metricId: e.metricId, provenance: e.provenance });
+      for (const r of e.rows) item(r.label, r.value, r.provenance, { ...(r.metricId ? { metricId: r.metricId } : {}), provenance: r.provenance, value: r.value });
     }
   }
 
   push("");
   rule("=");
-  if (unavailable) for (const l of wrapWords(unavailableText(unavailable), W)) push(l);
-  for (const p of ["exact", "derived", "heuristic"] as Provenance[]) if (used.has(p)) push(LEGEND[p]);
-  if (costShown) for (const l of wrapWords(COST_NOTE, W)) push(l);
-  push(fit(timesText(tz), W));
+  for (const f of view.footnotes) {
+    if ("legend" in f) push(LEGEND[f.legend]);
+    else if (f.wrap) for (const l of wrapWords(f.text, W)) push(l);
+    else push(fit(f.text, W));
+  }
   push("");
-  push(center(footerFor(s.id)));
+  push(center(view.closing));
   push("");
   push("\\/".repeat(W).slice(0, W));
   return out;
 }
+
+export const renderLines = (receipt: Receipt, opts: RenderOptions = {}): Line[] => renderViewLines(sessionView(receipt), opts);
 
 const ESC = "\x1b[";
 // Optional ANSI layer: bold title and section headings, dim rules and dotted leaders. Removing
@@ -88,6 +82,8 @@ function paint(t: string, i: number): string {
   return t.replace(/ (\.{2,}) /, ` ${ESC}2m$1${ESC}0m `);
 }
 
-export function renderTerminal(receipt: Receipt, opts: RenderOptions = {}): string {
-  return `${renderLines(receipt, opts).map((l, i) => (opts.color ? paint(l.text, i) : l.text)).join("\n")}\n`;
+export function renderViewTerminal(view: ReceiptView, opts: RenderOptions = {}): string {
+  return `${renderViewLines(view, opts).map((l, i) => (opts.color ? paint(l.text, i) : l.text)).join("\n")}\n`;
 }
+
+export const renderTerminal = (receipt: Receipt, opts: RenderOptions = {}): string => renderViewTerminal(sessionView(receipt), opts);

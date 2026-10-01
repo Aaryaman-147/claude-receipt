@@ -41,7 +41,7 @@ function assertMarks(r: Receipt, width?: number) {
   const byId = new Map(all(r).map((m) => [m.id, m]));
   const lines = renderLines(r, width ? { width } : {});
   for (const l of lines.filter((x) => x.metricId && x.value !== undefined)) {
-    const m = byId.get(l.metricId!)!;
+    const m = byId.get(l.metricId as MetricId)!;
     assert.equal(l.provenance, m.provenance, `${l.metricId}: line provenance`);
     const derivedMark = l.text.endsWith(" *"), heuristicMark = l.value !== "" && l.text.includes(`~${l.value}`);
     if (m.provenance === "exact") assert.ok(!derivedMark && !heuristicMark, `${l.metricId} exact but marked: "${l.text}"`);
