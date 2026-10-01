@@ -121,6 +121,7 @@ Each item gets a short written finding in `M0_FINDINGS.md` and at least one fixt
 Git enrichment was delivered in M1b.
 
 - [ ] Release checklist: README updated with real commands and a real (redacted) sample; npm name confirmed; packaging/build step for the TypeScript sources; `npx claude-receipt` works on Windows, macOS and Linux; the privacy doc matches behaviour.
+- [ ] Project licence: an MIT `LICENSE` file (and `license` in `package.json`), added before packaging. Third-party licences stay with their components and ship with them: IBM Plex Mono (OFL-1.1, with the font files), `@resvg/resvg-wasm` (MPL-2.0).
 
 ---
 
@@ -135,10 +136,15 @@ Git enrichment was delivered in M1b.
 - [ ] Local-timezone bucketing with a test across a DST change.
 
 ### M6: Visual receipt (SVG/PNG)
-- [ ] Design system for the receipt (typography, separators, torn edges, paper texture, microcopy) agreed before code.
-- [ ] `render/svg` from the same Receipt model. PNG via resvg. Fonts bundled with licences checked.
-- [ ] Export redaction on by default. Golden-image tests.
+
+Specification: `docs/VISUAL_RECEIPT.md`. M6 is being built ahead of M4 and M5; the official numbering is unchanged. It is delivered in four implementation stages with descriptive names (they are not milestone numbers; in conversation they were drafted as "M4a–M4d"):
+
+- [x] **Visual Receipt — Spec:** design system agreed before code (`docs/VISUAL_RECEIPT.md`): 576 px paper on a 624 px canvas (flat backdrop `#E8E5DE`, flat paper `#FAF8F2`, no grain in the MVP), torn sawtooth edges, IBM Plex Mono on a 42-column grid, the terminal's provenance marks and copy.
+- [ ] **Visual Receipt — SVG:** pure layout model and hand-written deterministic SVG from the same Receipt (the canonical visual output; no Satori, no frontend framework). IBM Plex Mono Regular and Bold bundled unmodified with their OFL-1.1 licence. Golden SVG tests.
+- [ ] **Visual Receipt — PNG:** PNG rendered from the SVG with `@resvg/resvg-wasm` (pinned) at 2× (1248 px wide). `claude-receipt export`, redacted by default via `redactReceipt()`, with one opt-out, `--no-redact`. PNG determinism and privacy tests.
 - [ ] Exact, derived and heuristic values are visually distinguishable in the image with the same meaning as in the terminal, with a legend (`METRICS.md` → Rendering rule).
+- [ ] **Visual Receipt — Packaging:** fonts, licence files and the WASM binary ship in the npm package (coordinated with M4); optional polish such as paper grain only if it doesn't harm readability.
+- Image glyph coverage is limited to IBM Plex Mono's; no CJK fallback font is bundled.
 
 ### M7: Lore expansion and opt-in text features
 - [ ] `lore.patterns`, `lore.nightOwl`, metadata-only `lore.personality`, each rule documented in `METRICS.md`.

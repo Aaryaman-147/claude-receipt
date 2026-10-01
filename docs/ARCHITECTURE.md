@@ -234,5 +234,5 @@ Evidence and status for each rule: `docs/research/M0_FINDINGS.md`; limitations a
 - Runtime dependencies: none so far. Dev-only: `typescript`, `@types/node`.
 - Tests: the built-in `node:test` runner.
 - Terminal: `picocolors` and `string-width` (exact column alignment including wide characters).
-- Future visual renderer: Satori (JSX → SVG) and `@resvg/resvg-js` (SVG → PNG), with no headless browser. Fonts are bundled.
+- Visual renderer (M6, `docs/VISUAL_RECEIPT.md`): Receipt → pure layout model (`VisualDoc`) → hand-written deterministic SVG (canonical) → PNG via `@resvg/resvg-wasm` (pinned; WebAssembly, no native binaries, no system fonts). No Satori, no React or frontend framework, no headless browser. IBM Plex Mono (OFL-1.1) bundled unmodified.
 - Every dependency must be justified in the PR that adds it.

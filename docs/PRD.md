@@ -72,6 +72,13 @@ A generated SVG/PNG receipt image:
 
 It is driven by the same Receipt model as the terminal. Exports are redacted by default (see `PRIVACY.md`).
 
+Specified in `docs/VISUAL_RECEIPT.md`:
+- IBM Plex Mono; a 576 px paper (80 mm thermal roll width) on a flat `#E8E5DE` backdrop; flat `#FAF8F2` paper (the subtle texture above is deferred: no grain in the MVP).
+- SVG as the canonical output; PNG at 2×.
+- The same provenance marks as the terminal.
+- `claude-receipt export` redacted by default, with one opt-out, `--no-redact`.
+- Image glyphs are limited to the bundled font's coverage (no CJK fallback yet).
+
 ### 5.4 Commands
 
 | Command | Meaning | Phase |
@@ -83,7 +90,7 @@ It is driven by the same Receipt model as the terminal. Exports are redacted by 
 | `claude-receipt list` | Recent sessions (default 20, `--limit N`): start time, short id, project, duration, state; sessions whose transcript is gone come from the archive | MVP (M3) |
 | `claude-receipt --project` | Aggregate receipt for the current project | Future (M5) |
 | `claude-receipt --week` / `--month` | Aggregate receipt for a period | Future (M5) |
-| `claude-receipt export` | SVG/PNG receipt | Future (M6) |
+| `claude-receipt export` | SVG/PNG receipt, redacted by default (`--no-redact` to opt out) | Future (M6) |
 | `claude-receipt wrapped [year]` | Yearly Claude Wrapped | Future (M8) |
 
 Every run archives newly seen or changed sessions as a side effect, so history accumulates from the first use (see `ARCHITECTURE.md` §6). `--no-archive` makes a run read-only; `--redact` applies the export redaction rules (`PRIVACY.md` §6). Exit codes: 0 success, 1 nothing to show (no sessions, no match, ambiguous prefix), 2 usage error.

@@ -95,15 +95,17 @@ Opt-in text features (recurring phrases, text-based personality) are computed fr
 
 Default redaction for anything written to a file or meant for sharing:
 
-| Field | Default in exports | Opt-in to reveal |
-|---|---|---|
-| Project name | `project` → hidden or a user-chosen alias | `--show-project` |
-| `cwd`, file paths | Removed; most-edited file shown as extension only (e.g. `*.ts`) | `--show-files` shows basename only, never full paths |
-| Session title | Removed | `--show-title` |
-| Session id, commit SHAs | Truncated (first 4 chars) | none |
-| MCP server, skill, plugin names | Grouped (`MCP`, `Skills`) | `--show-tools` |
-| Numbers, models, languages, lore values | Shown | n/a |
-| Recurring phrases | Never, unless the explicit per-export flag is given | `--include-phrases` |
+| Field | Default in exports |
+|---|---|
+| Project name | Hidden |
+| `cwd`, file paths | Removed; most-edited file shown as extension only (e.g. `*.ts`) |
+| Session title | Removed |
+| Session id | Truncated (first 4 chars) |
+| MCP server names | Grouped (`MCP`) |
+| Numbers, models, languages, lore values | Shown |
+| Recurring phrases (future, M7) | Never, unless an explicit per-export flag is given |
+
+There is **one opt-out, `--no-redact`**, which exports the unredacted Receipt. The per-field reveal flags once planned here (`--show-project`, `--show-files`, `--show-title`, `--show-tools`) are not part of the product. For the visual receipt (M6, `docs/VISUAL_RECEIPT.md`), `claude-receipt export` applies `redactReceipt()` before rendering, the renderer never knows which fields were redacted, and generated SVG/PNG files contain nothing beyond what is drawn (no hidden metadata).
 
 The terminal receipt (on your own screen) shows project and file names by default, because it isn't shared unless you choose to share it. `--redact` applies export rules to the terminal too, for screenshots.
 

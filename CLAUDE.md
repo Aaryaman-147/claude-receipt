@@ -13,7 +13,9 @@ Claude Receipt turns Claude Code sessions into receipts: hard stats, coding stat
 - M1b (analytics in `src/analytics/`, Receipt model + validator in `src/receipt/`, Receipt JSON in `src/render/json.ts`, read-only git in `src/git/`): implemented.
 - M2 (local metrics-only archive in `src/archive/`): implemented.
 - M3 (CLI in `src/cli/` with the archive sweep, terminal renderer in `src/render/tty.ts` + `format.ts`, redaction in `src/receipt/redact.ts`): implemented.
-- M4 onwards (packaging/release, aggregation, visual receipt, Wrapped): not started. Don't build them unless the current task asks for it.
+- M6 (visual receipt): specified in `docs/VISUAL_RECEIPT.md` and being built ahead of M4/M5, in stages named "Visual Receipt — Spec / SVG / PNG / Packaging" (descriptive stage names, not milestone numbers; never renumber the official roadmap). Only the Spec stage is done.
+- M4 (v0.1 release), M5 (periods), M7+ (lore, Wrapped): not started. Don't build anything beyond the current task.
+- The visual renderer is a pure consumer of the Receipt, exactly like the terminal renderer: no filesystem, git, archive, transcript or environment access, no new analytics, and the same provenance marks and copy from `src/render/format.ts`.
 
 ## Commands
 
