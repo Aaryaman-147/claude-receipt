@@ -332,3 +332,45 @@ The key is a path, so it is sensitive: redaction (`redactHistory`) always sets i
 | `agg.topProjects` | `{project, sessions}[]` | Sessions per project key, named by project. Sensitive | derived |
 
 **Never aggregated** (session-only): `files.read`, `files.created`, `files.edited` (distinct files per session; summing double counts and the archive has no file identities), `files.mostEdited` (a per-session maximum of a path), `commits.inWindow`, `commits.coAuthored`, `git.lines` (repository facts for a time window: overlapping sessions in one repository would count the same commits twice), `lore.readEditRatio` (built from per-session distinct counts), `session.runs`, `session.duration.open`, titles and any text (including "favourite phrases"). No Wrapped or personality metric is part of v0.2.
+
+## Receipt story (v0.2.1, presentation only)
+
+Implemented in `src/render/narrative.ts`. The story is **presentation, not data**: it chooses which existing metric values an image leads with and the fixed words around them. It adds no metric, changes no value or provenance, and nothing of it is stored in the Receipt, the HistoryReceipt, `--json` or the archive. It is drawn in images only; the terminal receipt does not include it.
+
+**Rules.**
+- Pure and deterministic: the same (possibly redacted) Receipt or HistoryReceipt always gives the same story. No clock, randomness, environment, transcript text or AI-generated text.
+- Every flavour string (openings, beat headings, observations, closings) comes from one fixed table (`COPY`); a test checks that no other wording can appear.
+- Facts are the metric values, formatted as in the rest of the receipt, and keep their metric's provenance and mark (`*` derived, `~` heuristic). The wording frames a fact, never upgrades it.
+- A fact appears once: a beat showing a metric that is already a big number is dropped before the beat limit applies, and supporting rows skip metrics the story showed.
+- The opening and closing lines are picked from fields that redaction doesn't change (times, period, counts), so a redacted image says the same words.
+
+**Big numbers (hero), at most 3.** Session: DURATION, TOKENS OUT, API EQUIVALENT. History: SESSIONS, PROJECTS (left out for a one-project history), IN SESSIONS (`agg.duration.wall`). A number whose metric is unavailable is left out.
+
+**Beats, at most 5, in this priority order, each only when its data is available and passes its threshold:**
+
+| Beat | Session | History |
+|---|---|---|
+| YOUR BIGGEST DAY | — | `agg.busiestDay` with ≥ 2 sessions, over ≥ 2 days with data |
+| THE LONG ONE | `session.duration.wall` ≥ 1 h (never shown: duration is already a big number) | `agg.longestSession` ≥ 30 min, with ≥ 2 sessions |
+| YOU SHIPPED | `lines.added` / `lines.removed`, not both zero | `agg.lines.added` / `.removed`, not both zero |
+| DOWN THE RABBIT HOLE | `lore.rabbitHole` with ≥ 10 tool calls | `agg.rabbitHole` with ≥ 10 tool calls |
+| YOUR TOOLBOX | `toolCalls.byName` with ≥ 2 tools; the top 3 (ties by name) | `agg.toolCalls.byName`, the same |
+| NICE RUN | — | `agg.streak` ≥ 3 days |
+| WHERE YOU WORKED | — | `agg.topProjects` with ≥ 2 projects; the top 3. Not for a one-project history; hidden by redaction |
+| THE LONGEST TURN | `lore.longestTurn` ≥ 5 min | — |
+
+Session order: THE LONG ONE, YOU SHIPPED, DOWN THE RABBIT HOLE, YOUR TOOLBOX, THE LONGEST TURN. History order: YOUR BIGGEST DAY, YOU SHIPPED, DOWN THE RABBIT HOLE, THE LONG ONE, YOUR TOOLBOX, NICE RUN, WHERE YOU WORKED.
+
+**Opening line:** the first that applies. Session: still running (STILL GOING.), duration ≥ 3 h (YOU'VE BEEN BUSY.), ≥ 500 lines added (LET'S SEE WHAT YOU SHIPPED.), a rabbit hole of ≥ 40 tool calls (DOWN THE RABBIT HOLE WE GO.). History: ≥ 20 sessions, ≥ 500 lines added, a rabbit hole of ≥ 40 tool calls, a streak of ≥ 3 days (LOOKS LIKE YOU HAD A RUN.). Otherwise HERE'S YOUR RECEIPT.
+
+**Observation (heuristic, at most one).** From the hour histogram of recorded activity (prompts and tool calls per local hour: `lore.peakHour` `detail.byHour`, summed for a history as in `agg.peakHour`). It needs ≥ 40 recorded events; a history also needs ≥ 3 sessions with hour data, all recorded in one time zone (it is suppressed when time zones are mixed). The first that applies:
+
+| Observation | Rule | Text (history / session) |
+|---|---|---|
+| NIGHT OWL | ≥ 50 % of activity between 20:00 and 04:59 | "Most of your recorded activity happened between 8 PM and 5 AM." / "Most of this session's activity happened between 8 PM and 5 AM." |
+| EARLY BIRD | ≥ 50 % between 05:00 and 11:59 | "Most of your recorded activity happened before noon." / "Most of this session's activity happened before noon." |
+| AFTER HOURS | ≥ 35 % between 18:00 and 23:59, and the peak hour in 18–23 | "Your busiest hours were in the evening." / "This session's busiest hours were in the evening." |
+
+Provenance: heuristic (a threshold on a derived histogram); drawn with `~`, never bold. Limitations: it describes when activity was recorded in the recorded time zone, not working hours, habits or the person. Privacy: hour counts only.
+
+**Printed versus kept.** These metrics are kept in the Receipt, the HistoryReceipt, `--json` and the archive, but are not printed on the terminal or image receipt (v0.2.1): `turns.count`, `commands.count`, `commands.topPrograms`, `tests.runs`, `errors.toolErrors`, `interruptions`, `commits.byClaude`, `session.runs`, `session.duration.open`, `lore.readEditRatio`, `lore.errorStreak`, `commits.inWindow`, `commits.coAuthored`, `git.lines`, and the history `agg.turns`, `agg.commands.count`, `agg.commands.topPrograms`, `agg.tests.runs`, `agg.errors.toolErrors`, `agg.interruptions`, `agg.commits.byClaude`, `agg.errorStreak` (`HIDDEN_METRICS` in `src/render/format.ts`). The `N metrics unavailable` count covers printed metrics only.

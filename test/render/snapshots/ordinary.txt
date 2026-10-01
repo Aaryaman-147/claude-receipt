@@ -13,8 +13,6 @@ STATUS ...................... COMPLETE
 -- HARD STATS --------------------------
 DURATION ......................... 21s *
 ACTIVE TIME (EST.) .............. ~21s
-CLAUDE CODE OPEN ................. 22s
-RUNS ............................... 1 *
 CLAUDE WORKING ................... 12s
 MODELS
   haiku-4-5
@@ -39,23 +37,13 @@ LINES REMOVED ..................... -1 *
 MOST EDITED ................ file1.txt *
 LANGUAGES
   Text ....................... 4 lines *
-SHELL COMMANDS ..................... 2
-TOP PROGRAMS
-  echo ............................. 1 *
-  ls ............................... 1 *
-TEST RUNS DETECTED ................ ~0
-TOOL ERRORS ........................ 1
-INTERRUPTED TOOL RUNS .............. 0
-CLAUDE COMMITS DETECTED ........... ~0
 
 -- SESSION LORE ------------------------
 BIGGEST RABBIT HOLE ... 4 calls in 17s *
-LONGEST ERROR STREAK ............... 1 *
-READS PER EDIT ..................... 0 *
 CACHE HIT RATE ................... 90% *
 
 ========================================
-6 metrics unavailable, not shown
+2 metrics unavailable, not shown
 plain    recorded directly
   *      computed from data
   ~      heuristic estimate
@@ -63,6 +51,6 @@ API EQUIVALENT = these tokens at API
 list prices
 times: UTC
 
-          NO REFUNDS ON TOKENS
+         THANK YOU FOR SHIPPING
 
 \/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/\/

@@ -191,7 +191,7 @@ test("live: the LIVE band is a solid ink bar with its words knocked out in paper
   assert.ok(light > 500, "band text is drawn in paper colour");
 });
 
-const GOLDEN_ORDINARY = "ca57ec5c9bdd54e686a567f713740c69860af66c4713aa68427179ff9616e231";
+const GOLDEN_ORDINARY = "f402c76b34c68ce1182cb64f42c3ed71fa6449dfd4dfce2328a9913aa872482b";
 
 // The README's sample image: the redacted receipt of an anonymized fixture, regenerated with
 // UPDATE_SNAPSHOTS=1 so it always shows the current renderer.

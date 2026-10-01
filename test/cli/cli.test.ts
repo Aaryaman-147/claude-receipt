@@ -96,9 +96,12 @@ test("resumed session: last shows every run, and the archive entry is updated in
   const first = files(h.archive);
   put(h, "p", A, raw("resumed.jsonl")); // two more runs appended to the same session
   const r = await cli(h, ["last"]);
-  assert.match(r.out, /RUNS \.+ 3 \*/);
   assert.match(r.err, /aaaa1111 updated in the local archive/);
   assert.deepEqual(files(h.archive), first, "same single entry");
+  // every run is in the receipt (the runs count is data, no longer a printed row since v0.2.1)
+  const runs = (JSON.parse((await cli(h, ["last", "--json"])).out) as Receipt).sections.hard.find((m) => m.id === "session.runs")!;
+  assert.deepEqual([runs.value, runs.provenance], [3, "derived"]);
+  assert.ok(!/RUNS \.+/.test(r.out));
 });
 
 test("session id prefix: unique match renders; ambiguous or unknown prefixes fail clearly", async () => {

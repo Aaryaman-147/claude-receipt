@@ -7,8 +7,11 @@ import type { HistoryReceipt } from "../aggregate/types.ts";
 import type { Provenance, Receipt, Section } from "../receipt/types.ts";
 import {
   COST_NOTE, HISTORY_LABELS, HISTORY_SUBTITLE, LEGEND_ORDER, PERIOD_LABELS, PRIMARY, SECTION_TITLES, SUBTITLE, TITLE,
-  footerFor, historyMetricRows, identityRows, int, isHistoryShown, isShown, metricRows, timesText, unavailableText,
+  historyMetricRows, identityRows, int, isDisplayed, isHistoryShown, isShown, metricRows, timesText, unavailableText,
 } from "./format.ts";
+import { historyStory, sessionStory, type Observation, type StoryBeat, type StoryFact } from "./narrative.ts";
+
+export type { Observation, StoryBeat, StoryFact } from "./narrative.ts";
 
 export interface ViewRow {
   label: string; // may start with "  " (an indented list row)
@@ -16,6 +19,7 @@ export interface ViewRow {
   provenance: Provenance; // renderers draw the mark from this (exact plain, derived " *", heuristic "~")
   metricId?: string; // set on metric rows
   bold?: true; // emphasized value; never set on a heuristic value
+  ref?: StoryFact["ref"]; // header rows that a hero fact can show instead (coverage counts)
 }
 
 export interface ViewEntry {
@@ -34,10 +38,15 @@ export type ViewFootnote = { text: string; wrap: boolean } | { legend: Provenanc
 export interface ReceiptView {
   title: string;
   subtitle: string;
+  opening: string; // receipt-native greeting (./narrative.ts COPY); flavour, never a fact
   header: ViewRow[]; // identity rows (provenance exact, no metric id)
   note: string | null; // a quoted line under the header (the session title), wrapped by the renderer
   band: "live" | null; // a status band; each renderer has its own wording for it
-  sections: ViewSection[]; // only sections with something to show
+  hero: StoryFact[]; // 0-3 big numbers (v0.2.1)
+  beats: StoryBeat[]; // 0-5 story beats, in priority order (v0.2.1)
+  observation: Observation | null; // at most one time-of-day observation, always heuristic (~)
+  consumed: string[]; // metric ids the hero and beats show (renderers may skip them in sections)
+  sections: ViewSection[]; // supporting data: displayed metrics only, sections with something to show
   footnotes: ViewFootnote[];
   closing: string; // footer microcopy
 }
@@ -49,8 +58,8 @@ export function sessionView(receipt: Receipt): ReceiptView {
   let unavailable = 0, costShown = false;
   const sections: ViewSection[] = [];
   for (const section of ["hard", "coding", "lore"] as Section[]) {
-    unavailable += receipt.sections[section].filter((m) => m.value === null).length;
-    const shown = receipt.sections[section].filter(isShown);
+    unavailable += receipt.sections[section].filter((m) => m.value === null && isDisplayed(m.id)).length;
+    const shown = receipt.sections[section].filter((m) => isShown(m) && isDisplayed(m.id));
     if (!shown.length) continue;
     sections.push({
       title: SECTION_TITLES[section],
@@ -74,15 +83,21 @@ export function sessionView(receipt: Receipt): ReceiptView {
     ...(costShown ? [{ text: COST_NOTE, wrap: true }] : []),
     { text: timesText(tz), wrap: false },
   ];
+  const story = sessionStory(receipt);
   return {
     title: TITLE,
     subtitle: SUBTITLE,
+    opening: story.opening,
     header: identityRows(s, tz).map((r) => ({ label: r.label, value: r.value, provenance: "exact" })),
     note: s.title ? `"${s.title}"` : null,
     band: s.live ? "live" : null,
+    hero: story.hero,
+    beats: story.beats,
+    observation: story.observation,
+    consumed: story.consumed,
     sections,
     footnotes,
-    closing: footerFor(s.id),
+    closing: story.closing,
   };
 }
 
@@ -95,9 +110,9 @@ export function historyView(h: HistoryReceipt): ReceiptView {
   const projectName = top?.id === "agg.topProjects" && top.value?.length === 1 ? top.value[0]!.project : null;
   const header: ViewRow[] = [
     row("PERIOD", PERIOD_LABELS[h.scope.period]),
-    ...(h.scope.projectFilter ? [row("PROJECT", projectName ?? "THIS DIRECTORY")] : []),
-    row("SESSIONS", int(c.sessions)),
-    ...(h.scope.projectFilter ? [] : [row("PROJECTS", int(c.projects))]),
+    ...(h.scope.projectFilter ? [row("PROJECT", projectName ?? "ONE PROJECT (HIDDEN)")] : []),
+    { ...row("SESSIONS", int(c.sessions)), ref: "coverage.sessions" },
+    ...(h.scope.projectFilter ? [] : [{ ...row("PROJECTS", int(c.projects)), ref: "coverage.projects" as const }]),
     ...(c.firstDate ? [row("FIRST", c.firstDate), row("LAST", c.lastDate!)] : []),
     row("DAYS WITH DATA", c.daysInPeriod === null ? int(c.daysWithData) : `${int(c.daysWithData)} of ${int(c.daysInPeriod)}`),
     ...(c.undated ? [row(bounded ? "UNDATED (NOT COUNTED)" : "UNDATED", int(c.undated))] : []),
@@ -110,8 +125,8 @@ export function historyView(h: HistoryReceipt): ReceiptView {
   const partial = new Map<number, string[]>(); // sessions covered → labels of metrics based on fewer than all
   const sections: ViewSection[] = [];
   for (const section of ["hard", "coding", "lore"] as Section[]) {
-    unavailable += h.sections[section].filter((m) => m.value === null).length;
-    const shown = h.sections[section].filter(isHistoryShown);
+    unavailable += h.sections[section].filter((m) => m.value === null && isDisplayed(m.id)).length;
+    const shown = h.sections[section].filter((m) => isHistoryShown(m) && isDisplayed(m.id));
     if (!shown.length) continue;
     sections.push({
       title: SECTION_TITLES[section],
@@ -140,14 +155,20 @@ export function historyView(h: HistoryReceipt): ReceiptView {
     ...(peakShown && mixedZones ? [{ text: "PEAK HOUR uses each session's recorded time zone", wrap: true }] : []),
     { text: timesText(h.context.timeZone), wrap: false },
   ];
+  const story = historyStory(h);
   return {
     title: TITLE,
     subtitle: HISTORY_SUBTITLE,
+    opening: story.opening,
     header,
     note: null,
     band: null,
+    hero: story.hero,
+    beats: story.beats,
+    observation: story.observation,
+    consumed: story.consumed,
     sections,
     footnotes,
-    closing: footerFor(`history:${h.scope.period}`),
+    closing: story.closing,
   };
 }

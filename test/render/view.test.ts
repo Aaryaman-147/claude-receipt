@@ -7,7 +7,8 @@ import { test } from "node:test";
 import { buildReceipt } from "../../src/analytics/index.ts";
 import { redactReceipt } from "../../src/receipt/redact.ts";
 import type { Metric, MetricId, Receipt } from "../../src/receipt/types.ts";
-import { COST_NOTE, LEGEND_ORDER, PRIMARY, SECTION_TITLES, SUBTITLE, TITLE, footerFor, isShown, timesText } from "../../src/render/format.ts";
+import { COST_NOTE, LEGEND_ORDER, PRIMARY, SECTION_TITLES, SUBTITLE, TITLE, isDisplayed, isShown as hasValue, timesText } from "../../src/render/format.ts";
+import { sessionStory } from "../../src/render/narrative.ts";
 import { renderTerminal, renderViewTerminal } from "../../src/render/tty.ts";
 import { layoutReceipt, layoutView } from "../../src/render/visual/layout.ts";
 import { sessionView, type ReceiptView } from "../../src/render/view.ts";
@@ -20,6 +21,8 @@ const NOW = new Date("2026-10-01T00:00:00.000Z");
 const receipts = async () => (await loadSessions(FIXTURES.map((n) => refForFile(join(DIR, n))))).map((s) => buildReceipt(s, { now: NOW, timeZone: "UTC" }));
 // loaded on its own: loaded with the others, it is (correctly) seen as a fork of an identical fixture
 const ordinary = async () => buildReceipt((await loadSessions([refForFile(join(DIR, "ordinary.jsonl"))]))[0]!, { now: NOW, timeZone: "UTC" });
+// shown on the receipt: has a value and is not one of the metrics v0.2.1 hides
+const isShown = (m: Metric) => hasValue(m) && isDisplayed(m.id);
 const all = (r: Receipt) => Object.values(r.sections).flat();
 const withProv = (r: Receipt, id: MetricId, provenance: Metric["provenance"]): Receipt =>
   ({ ...r, sections: Object.fromEntries(Object.entries(r.sections).map(([k, ms]) => [k, ms.map((m) => (m.id === id ? { ...m, provenance } : m))])) as Receipt["sections"] });
@@ -36,7 +39,7 @@ test("session view: title, header, note, band and sections in Receipt order, onl
     const shownSections = (["hard", "coding", "lore"] as const).filter((s) => r.sections[s].some(isShown));
     assert.deepEqual(v.sections.map((s) => s.title), shownSections.map((s) => SECTION_TITLES[s]));
     assert.deepEqual(v.sections.flatMap((s) => s.entries.map((e) => e.metricId)), all(r).filter(isShown).map((m) => m.id), "same metrics, same order");
-    assert.equal(v.closing, footerFor(r.session.id));
+    assert.equal(v.closing, sessionStory(r).closing, "the story's closing line");
   }
 });
 
@@ -68,7 +71,7 @@ test("footnotes: unavailable count, legend for the marks in use (in order), cost
   for (const r of await receipts()) {
     const f = sessionView(r).footnotes;
     const used = new Set(all(r).filter(isShown).map((m) => m.provenance));
-    const nulls = all(r).filter((m) => m.value === null).length;
+    const nulls = all(r).filter((m) => m.value === null && isDisplayed(m.id)).length; // hidden metrics are not counted
     const want = [
       ...(nulls ? [{ text: `${nulls} metric${nulls === 1 ? "" : "s"} unavailable, not shown`, wrap: true }] : []),
       ...LEGEND_ORDER.filter((p) => used.has(p)).map((p) => ({ legend: p })),
@@ -110,7 +113,7 @@ test("renderers render the view: the Receipt entry points equal rendering the se
 
 test("view.ts is pure: imports only the Receipt and HistoryReceipt types and the shared format module", () => {
   const src = readFileSync("src/render/view.ts", "utf8");
-  for (const [, from] of src.matchAll(/^import[^;]*?from "([^"]+)"/gm)) assert.match(from!, /^\.\.?\/(\.\.\/receipt\/types|receipt\/types|aggregate\/types|format)\.ts$/, from!);
+  for (const [, from] of src.matchAll(/^import[^;]*?from "([^"]+)"/gm)) assert.match(from!, /^\.\.?\/(\.\.\/receipt\/types|receipt\/types|aggregate\/types|format|narrative)\.ts$/, from!);
   assert.ok(!/\b(process\.|Date\.now|new Date\(|Math\.random|require\(|node:|\\x1b|<svg)/.test(src));
 });
 
@@ -129,7 +132,7 @@ test("history view: coverage header, no band, sections in registry order, bold/t
   assert.deepEqual(v.header.slice(0, 3).map((r) => [r.label, r.value]), [["PERIOD", PERIOD_LABELS.all], ["SESSIONS", String(h.coverage.sessions)], ["PROJECTS", String(h.coverage.projects)]]);
   assert.ok(v.header.every((r) => r.provenance === "exact" && r.metricId === undefined));
   const entries = v.sections.flatMap((s) => s.entries);
-  const shown = Object.values(h.sections).flat().filter((m) => m.value !== null && !(Array.isArray(m.value) && !m.value.length));
+  const shown = Object.values(h.sections).flat().filter((m) => m.value !== null && !(Array.isArray(m.value) && !m.value.length) && isDisplayed(m.id));
   assert.deepEqual(entries.map((e) => e.metricId), shown.map((m) => m.id));
   for (const e of entries) {
     const m = shown.find((x) => x.id === e.metricId)!;

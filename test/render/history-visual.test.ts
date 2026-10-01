@@ -38,7 +38,7 @@ function assertBounds(d: VisualDoc) {
   for (const i of d.items) {
     const [x1, x2] = i.kind === "text" ? (i.anchor === "start" ? [i.x, i.x + i.width] : i.anchor === "end" ? [i.x - i.width, i.x] : [i.x - i.width / 2, i.x + i.width / 2]) : i.kind === "band" ? [i.x, i.x + i.width] : [i.x1, i.x2];
     assert.ok(x1 >= TEXT_LEFT - 1e-9 && x2 <= TEXT_RIGHT + 1e-9, `${i.kind} "${"text" in i ? i.text : ""}" x ${x1}..${x2}`);
-    const [y1, y2] = i.kind === "text" ? [i.y - VISUAL.type[i.role].size, i.y] : i.kind === "band" ? [i.y, i.y + i.height] : [i.y, i.y];
+    const [y1, y2] = i.kind === "text" ? [i.y - (i.size ?? VISUAL.type[i.role].size), i.y] : i.kind === "band" ? [i.y, i.y + i.height] : [i.y, i.y];
     assert.ok(y1 > d.paper.top + VISUAL.edge.depth && y2 < d.paper.bottom - VISUAL.edge.depth, `${i.kind} y crosses a torn edge`);
   }
 }
@@ -49,7 +49,7 @@ test("history SVG: the same receipt language (title, itemized history, leaders, 
     const d = doc(h);
     assertBounds(d);
     const t = texts(d).map((x) => x.text);
-    assert.deepEqual(t.slice(0, 2), ["CLAUDE RECEIPT", "itemized history"]);
+    assert.deepEqual(t.slice(1, 3), ["CLAUDE RECEIPT", "itemized history"], "after the opening line");
     assert.ok(t.includes({ all: "ALL SESSIONS", week: "LAST 7 DAYS", month: "LAST 30 DAYS" }[period]));
     assert.ok(["HARD STATS", "CODING STATS", "SESSION LORE", "API EQUIVALENT", "plain    recorded directly"].every((s) => t.includes(s)));
     assert.ok(!d.items.some((i) => i.kind === "band"), "no LIVE band on a history");
@@ -71,7 +71,7 @@ test("provenance and emphasis in the image: marks by provenance, bold primaries,
     assert.equal(t.text.startsWith("~"), m.provenance === "heuristic");
     if (m.provenance === "heuristic") assert.equal(t.weight, 400);
   }
-  const bold = new Set(texts(doc(h)).filter((t) => t.part === "value" && t.weight === 700).map((t) => t.metricId));
+  const bold = new Set(texts(doc(h)).filter((t) => t.part === "value" && t.weight === 700 && t.metricId).map((t) => t.metricId));
   assert.deepEqual([...bold].sort(), ["agg.cost.apiEquivalent", "agg.duration.wall", "agg.lines.added", "agg.lines.removed", "agg.tokens.input", "agg.tokens.output"]);
 });
 
@@ -104,7 +104,7 @@ test("long and Unicode names and a long partial-coverage footer stay inside the 
   const long = "an-extraordinarily-long-monorepo-project-name-that-keeps-going-and-going";
   const rs = [
     ...b.map((r, i) => clone(r, `s${i}`, { project: i % 2 ? "数据-pipeline-café-🚀" : long, projectKey: i % 2 ? "c:\\work\\data" : "c:\\work\\long" })),
-    clone(set(set(set(b[0]!, "commands.topPrograms", [{ program: "a-very-long-program-name-from-some-toolchain-x", count: 4 }]), "languages", [{ language: "TypeScript", lines: 1234567, files: 3 }, { language: "日本語ドキュメント", lines: 12, files: 1 }]), "models.used", ["claude-some-extremely-long-model-identifier-name-20991231"]), "x", { startedAt: "2026-09-29T10:00:00.000Z", project: "e\u0301\u0301-ζ", projectKey: "c:\\z" }),
+    clone(set(set(b[0]!, "languages", [{ language: "TypeScript", lines: 1234567, files: 3 }, { language: "a-very-long-language-name-from-some-toolchain-x", lines: 500, files: 1 }, { language: "日本語ドキュメント", lines: 12, files: 1 }]), "models.used", ["claude-some-extremely-long-model-identifier-name-20991231"]), "x", { startedAt: "2026-09-29T10:00:00.000Z", project: "e\u0301\u0301-ζ", projectKey: "c:\\z" }),
     // sessions missing different metrics make many partial-coverage groups
     ...["tokens.input", "api.duration", "lore.rabbitHole", "languages", "lore.longestTurn", "models.used"].map((id, i) => clone(set(b[0]!, id, null), `p${i}`, { startedAt: `2026-09-2${i}T10:00:00.000Z` })),
   ];
@@ -116,7 +116,7 @@ test("long and Unicode names and a long partial-coverage footer stay inside the 
     assert.ok(t.filter((x) => x.text.startsWith("based on ")).length >= 3, "several partial-coverage groups, all kept");
     const cut = t.filter((x) => x.text.endsWith("…")).map((x) => x.text);
     if (h.sections.lore.find((m) => m.id === "agg.topProjects")!.value !== null) assert.ok(cut.some((x) => x.startsWith("an-extraordinarily")), "long project cut with …");
-    assert.ok(cut.some((x) => x.startsWith("a-very-long-program")) && cut.some((x) => x.startsWith("some-extremely-long-model")));
+    assert.ok(cut.some((x) => x.startsWith("a-very-long-language")) && cut.some((x) => x.startsWith("some-extremely-long-model")));
     assert.ok(t.some((x) => x.text.includes("数据") ? x.pinned === true : true), "non-ASCII runs pinned to their grid width");
   }
 });

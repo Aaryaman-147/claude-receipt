@@ -4,7 +4,10 @@
 // docs/METRICS.md. Breaking changes to this file require RECEIPT_SCHEMA_VERSION + 1.
 
 export const RECEIPT_SCHEMA_VERSION = 1;
-export const GENERATOR = { name: "claude-receipt", version: "0.2.0" } as const; // = package.json version (tested)
+// The semantic Receipt generator: the version of the metric computation that Receipts, HistoryReceipts and
+// archive entries record. It changes only when the computation changes, independently of the package
+// release (VERSION in src/cli/run.ts); the archive treats a newer generator as a recompute (docs/RELEASE.md).
+export const GENERATOR = { name: "claude-receipt", version: "0.2.0" } as const;
 
 export type Provenance = "exact" | "derived" | "heuristic";
 export type Unit = "ms" | "tokens" | "usd" | "count" | "lines" | "hour" | "ratio";

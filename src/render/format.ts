@@ -71,12 +71,19 @@ export const HISTORY_SUBTITLE = "itemized history";
 export const PERIOD_LABELS: Record<Period, string> = { all: "ALL SESSIONS", week: "LAST 7 DAYS", month: "LAST 30 DAYS" };
 export const LIVE_TERMINAL = "[ LIVE SESSION: STILL RUNNING ]";
 export const LIVE_BAND = "LIVE · STILL RUNNING";
+// v0.2.1 presentation policy: metrics kept in the Receipt / HistoryReceipt (and their JSON and the
+// archive) but no longer shown on the printed receipt, because they add little to its story.
+export const HIDDEN_METRICS: ReadonlySet<string> = new Set([
+  "turns.count", "commands.count", "commands.topPrograms", "tests.runs", "errors.toolErrors", "interruptions", "commits.byClaude",
+  "session.runs", "session.duration.open", "lore.readEditRatio", "lore.errorStreak", "commits.inWindow", "commits.coAuthored", "git.lines",
+  "agg.turns", "agg.commands.count", "agg.commands.topPrograms", "agg.tests.runs", "agg.errors.toolErrors", "agg.interruptions", "agg.commits.byClaude", "agg.errorStreak",
+]);
+export const isDisplayed = (id: string) => !HIDDEN_METRICS.has(id);
+
 export const FOOTERS = ["THANK YOU FOR SHIPPING", "NO REFUNDS ON TOKENS", "KEEP FOR YOUR RECORDS", "PRINTED LOCALLY. NOTHING UPLOADED."];
 export const COST_NOTE = "API EQUIVALENT = these tokens at API list prices";
 export const unavailableText = (n: number) => `${n} metric${n === 1 ? "" : "s"} unavailable, not shown`;
 export const timesText = (timeZone: string) => `times: ${timeZone}`;
-// Deterministic per session.
-export const footerFor = (sessionId: string) => FOOTERS[[...sessionId].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % FOOTERS.length]!;
 
 export const int = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 

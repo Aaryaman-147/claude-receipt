@@ -151,6 +151,13 @@ Specification: `docs/VISUAL_RECEIPT.md`. M6 is being built ahead of M4 and M5; t
 - [x] **Visual Receipt — Packaging:** fonts, licence files and the WASM binary ship in the npm package (coordinated with M4); optional polish such as paper grain only if it doesn't harm readability (not done; none planned for v0.1).
 - Image glyph coverage is limited to IBM Plex Mono's; no CJK fallback font is bundled.
 
+### v0.2.1: Receipt story and targeting (presentation and CLI; no model change)
+- [x] Deterministic receipt story in images (`src/render/narrative.ts`, `METRICS.md` → Receipt story): opening, up to 3 big numbers sized to never collide, up to 5 beats, at most one heuristic time-of-day observation, closing; no fact repeated.
+- [x] Low-value and repeated rows no longer printed (still in `--json` and the archive).
+- [x] `<session-prefix> export [last]`; `project <name-or-path> [all | week | month] [export]`; redacted one-project label `ONE PROJECT (HIDDEN)`.
+- [x] Package version 0.2.1 separate from generator version 0.2.0 (`RELEASE.md` → Versions). JSON output and archive behaviour byte-identical to 0.2.0.
+- [ ] macOS and Linux verification (including the POSIX project-path test).
+
 ### M7: Lore expansion and opt-in text features
 - [ ] `lore.patterns`, `lore.nightOwl`, metadata-only `lore.personality`, each rule documented in `METRICS.md`.
 - [ ] Opt-in `lore.recurringPhrases` (explicit flag or config), never archived, never exported without a per-export flag.

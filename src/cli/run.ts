@@ -1,6 +1,7 @@
 // The claude-receipt command (docs/PRD.md §5.4). Glue only: sweep → select → render.
 // Testable: all I/O goes through `io`. stdout carries only the requested output (a receipt,
 // a list, JSON, or the path of an exported file); notes, archive status and problems go to stderr.
+import { resolve } from "node:path";
 import { aggregate } from "../aggregate/index.ts";
 import type { Period } from "../aggregate/types.ts";
 import { validateHistory } from "../aggregate/validate.ts";
@@ -15,6 +16,9 @@ import { claudeHome, projectKey } from "../source/claude-code/index.ts";
 import { exportHistory, exportReceipt } from "./export.ts";
 import { refresh, sweep, type Candidate, type SweepReport } from "./sweep.ts";
 
+// The package / CLI release (= package.json, tested). Receipts record GENERATOR.version instead.
+export const VERSION = "0.2.1";
+
 export interface Io {
   stdout(s: string): void;
   stderr(s: string): void;
@@ -28,7 +32,10 @@ export interface Io {
 
 export const USAGE = `usage: claude-receipt [<session-id-prefix> | last | list | all | week | month] [options]
        claude-receipt export [<session-id-prefix> | last] [--png | --svg] [-o <file>] [--no-redact]
+       claude-receipt <session-id-prefix> export [last] [--png | --svg] [-o <file>] [--no-redact]
        claude-receipt export all | week | month [--project] [--png | --svg] [-o <file>] [--no-redact]
+       claude-receipt project <name-or-path> [all | week | month] [--json] [--redact]
+       claude-receipt project <name-or-path> [all | week | month] export [--png | --svg] [-o <file>] [--no-redact]
 
   (no command)   receipt for the current or most recent session in this
                  directory, else the most recent session anywhere
@@ -38,12 +45,15 @@ export const USAGE = `usage: claude-receipt [<session-id-prefix> | last | list |
   week | month   history: sessions started in the last 7 / 30 local calendar
                  days, today included
   <prefix>       receipt for the session whose id starts with <prefix>
-  export         write that receipt (or with all/week/month, that history) as
+  project <name-or-path>
+                 history of one project (default: all), by folder name or
+                 path; a name shared by several projects needs its path
+  export         write that receipt (or that history) as
                  an image file; PNG by default, redacted by default, never
                  overwrites a file
 
 options:
-  --json         machine-readable output (the Receipt, or for all/week/month
+  --json         machine-readable output (the Receipt, or for a history
                  the HistoryReceipt, as JSON)
   --redact       hide project, paths, title; shorten ids (for sharing)
   --no-archive   read-only: don't write to the local archive
@@ -53,7 +63,7 @@ options:
   -o, --output <file>
                  export: file to create (default ./claude-receipt-<id>.png,
                  or ./claude-receipt-<period>[-project].png for a history;
-                 .svg with --svg)
+                 .svg with --svg; never named after a project)
   --no-redact    export: keep project, title and file names in the image
   -h, --help     this help
   -v, --version  version
@@ -67,19 +77,21 @@ interface Args {
   command: "receipt" | "last" | "list"; prefix: string | null; json: boolean; redact: boolean; write: boolean; limit: number;
   export: { format: "png" | "svg"; output: string | null; redact: boolean } | null;
   history: Period | null; project: boolean;
+  projectArg: string | null; // project <name-or-path>
 }
 
 const PERIODS: readonly string[] = ["all", "week", "month"];
+const RESERVED: readonly string[] = ["last", "list", "export", "project", ...PERIODS];
 
 function parse(argv: string[]): Args | { exit: number; out?: string; err?: string } {
-  const a: Args = { command: "receipt", prefix: null, json: false, redact: false, write: true, limit: 20, export: null, history: null, project: false };
+  const a: Args = { command: "receipt", prefix: null, json: false, redact: false, write: true, limit: 20, export: null, history: null, project: false, projectArg: null };
   let format: "png" | "svg" | null = null, output: string | null = null, noRedact = false;
   const usage = (msg: string) => ({ exit: 2, err: `${msg}\n\n${USAGE}` });
   const positional: string[] = [];
   for (let i = 0; i < argv.length; i++) {
     const x = argv[i]!;
     if (x === "-h" || x === "--help") return { exit: 0, out: USAGE };
-    if (x === "-v" || x === "--version") return { exit: 0, out: `${GENERATOR.name} ${GENERATOR.version}\n` };
+    if (x === "-v" || x === "--version") return { exit: 0, out: `${GENERATOR.name} ${VERSION}\n` };
     if (x === "--json") a.json = true;
     else if (x === "--redact") a.redact = true;
     else if (x === "--no-archive") a.write = false;
@@ -99,8 +111,25 @@ function parse(argv: string[]): Args | { exit: number; out?: string; err?: strin
     } else if (x.startsWith("-")) return { exit: 2, err: `unknown option ${x}\n\n${USAGE}` };
     else positional.push(x);
   }
-  const isExport = positional[0] === "export";
+  let isExport = positional[0] === "export";
   if (isExport) positional.shift();
+  else if (positional[0] === "project") {
+    // project <name-or-path> [all|week|month] [export]
+    const [, name, ...rest] = positional;
+    if (!name) return usage("project needs a project name or path");
+    if (a.project) return usage("--project means this directory's project; leave it out with project <name-or-path>");
+    a.projectArg = name;
+    const period = rest[0] !== undefined && PERIODS.includes(rest[0]) ? rest.shift()! : "all";
+    if (rest[0] === "export") { isExport = true; rest.shift(); }
+    if (rest.length) return usage(`project takes a name or path, then all, week or month, then export; not "${rest[0]}"`);
+    positional.splice(0, positional.length, period);
+  } else if (positional[1] === "export") {
+    // <session-id-prefix> export [last]: "last" names no other session here; it is this one
+    if (RESERVED.includes(positional[0]!)) return usage(`use claude-receipt export ${positional[0]}`);
+    if (positional.length > 3 || (positional[2] !== undefined && positional[2] !== "last")) return usage(`after <session-id-prefix> export, only last is allowed`);
+    isExport = true;
+    positional.splice(1);
+  }
   if (positional.length > 1) return { exit: 2, err: `expected at most one command or session id, got ${positional.length}\n\n${USAGE}` };
   const p = positional[0];
   if (isExport) {
@@ -184,13 +213,18 @@ function listRows(cands: Candidate[], args: Args, io: Io) {
 // `export all|week|month` writes the same history as an image: redacted unless --no-redact.
 async function history(period: Period, pool: Candidate[], args: Args, io: Io): Promise<number> {
   const timeZone = io.timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
-  const key = args.project ? projectKey(io.cwd) : null; // the same key v0.1 groups sessions by
+  let key: string | null = args.project ? projectKey(io.cwd) : null; // the same key v0.1 groups sessions by
+  if (args.projectArg !== null) {
+    const found = findProject(args.projectArg, pool, io.cwd);
+    if ("error" in found) { io.stderr(`claude-receipt: ${found.error}\n`); return 1; }
+    key = found.key;
+  }
   let h = aggregate(pool.map((c) => c.receipt), { period, now: io.now ?? new Date(), timeZone, projectKey: key });
   const redact = args.export ? args.export.redact : args.redact;
   if (redact) h = redactHistory(h);
   const problems = validateHistory(h);
   if (problems.length) { io.stderr(`claude-receipt: internal error: invalid history (${problems.slice(0, 3).join("; ")})\n`); return 1; }
-  const where = `${period === "all" ? "" : ` in the ${PERIOD_LABELS[period].toLowerCase()}`}${args.project ? " for this directory's project" : ""}`;
+  const where = `${period === "all" ? "" : ` in the ${PERIOD_LABELS[period].toLowerCase()}`}${args.project ? " for this directory's project" : args.projectArg !== null ? " for that project" : ""}`;
   if (h.coverage.sessions === 0) {
     const excluded = [h.coverage.liveExcluded && `${h.coverage.liveExcluded} still running`, h.coverage.undated && period !== "all" && `${h.coverage.undated} undated`].filter(Boolean);
     io.stderr(`claude-receipt: no finished sessions${where}${excluded.length ? ` (${excluded.join(", ")})` : ""}\n`);
@@ -208,6 +242,23 @@ async function history(period: Period, pool: Candidate[], args: Args, io: Io): P
   else io.stdout(renderViewTerminal(historyView(h), { width: io.isTTY && io.columns ? io.columns : 40, color: io.isTTY && !io.env.NO_COLOR }));
   io.stderr(`claude-receipt: ${summary}\n`);
   return 0;
+}
+
+// project <name-or-path> → one project key, with the same identity rules as --project (projectKey:
+// Windows paths compare case-insensitively). A path (anything with a separator, a drive or . / ..)
+// resolves against the current directory; a name matches the folder names of known projects,
+// case-insensitively for Windows projects. Errors never print a path.
+const isWindowsKey = (k: string) => /^[a-z]:\\|^\\\\/.test(k);
+function findProject(arg: string, pool: Candidate[], cwd: string): { key: string } | { error: string } {
+  const sessions = pool.map((c) => c.receipt.session).filter((s) => s.projectKey !== null);
+  if (/[\\/]|^[A-Za-z]:/.test(arg) || arg === "." || arg === "..") {
+    const key = projectKey(resolve(cwd, arg));
+    return sessions.some((s) => s.projectKey === key) ? { key } : { error: "no sessions found for that project path" };
+  }
+  const keys = [...new Set(sessions.filter((s) => s.project !== null && (isWindowsKey(s.projectKey!) ? s.project.toLowerCase() === arg.toLowerCase() : s.project === arg)).map((s) => s.projectKey!))];
+  if (!keys.length) return { error: `no project named "${arg}"` };
+  if (keys.length > 1) return { error: `"${arg}" matches ${keys.length} projects; give its path, or use --project inside it` };
+  return { key: keys[0]! };
 }
 
 export async function run(argv: string[], io: Io): Promise<number> {

@@ -7,7 +7,7 @@ import { buildReceipt } from "../../src/analytics/index.ts";
 import { redactReceipt } from "../../src/receipt/redact.ts";
 import { METRIC_IDS, METRICS, type Metric, type MetricId, type Receipt } from "../../src/receipt/types.ts";
 import { validateReceipt } from "../../src/receipt/validate.ts";
-import { displayWidth, LABELS, LEGEND } from "../../src/render/format.ts";
+import { displayWidth, isDisplayed, LABELS, LEGEND } from "../../src/render/format.ts";
 import { renderJson } from "../../src/render/json.ts";
 import { renderLines, renderTerminal } from "../../src/render/tty.ts";
 import { loadSessions, refForFile } from "../../src/source/claude-code/index.ts";
@@ -48,11 +48,11 @@ function assertMarks(r: Receipt, width?: number) {
     if (m.provenance === "derived") assert.ok(derivedMark && !heuristicMark, `${l.metricId} derived without " *": "${l.text}"`);
     if (m.provenance === "heuristic") assert.ok(heuristicMark && !derivedMark, `${l.metricId} heuristic without "~": "${l.text}"`);
   }
-  // every shown metric has at least one line; no null metric has any
+  // every displayed metric with a value has at least one line; null and hidden (v0.2.1) metrics have none
   const shownIds = new Set(lines.filter((l) => l.metricId).map((l) => l.metricId));
   for (const m of all(r)) {
     const empty = m.value === null || (Array.isArray(m.value) && !m.value.length) || (m.id === "toolCalls.byName" && !Object.keys(m.value as object).length);
-    assert.equal(shownIds.has(m.id), !empty, `${m.id}: shown iff it has a value`);
+    assert.equal(shownIds.has(m.id), !empty && isDisplayed(m.id), `${m.id}: shown iff it has a value and is displayed`);
   }
   return lines;
 }
@@ -65,7 +65,7 @@ test("provenance: a receipt with every metric filled shows every label with the 
   const r = await fullReceipt();
   for (const width of [40, 34, 28]) {
     const lines = assertMarks(r, width);
-    for (const id of METRIC_IDS) assert.ok(lines.some((l) => l.metricId === id), `${id} rendered at ${width}`);
+    for (const id of METRIC_IDS) assert.equal(lines.some((l) => l.metricId === id), isDisplayed(id), `${id} rendered at ${width} iff displayed`);
   }
   // the legend explains exactly the marks in use
   const text = renderTerminal(r);
@@ -80,18 +80,18 @@ test("heuristic metrics are worded as estimates or detections, never as recorded
     assert.match(LABELS[m.id], /DETECTED|EST\./, m.id);
   }
   const text = renderTerminal(r);
-  assert.match(text, /TEST RUNS DETECTED \.+ ~\d/);
-  assert.match(text, /CLAUDE COMMITS DETECTED \.+ ~\d/);
   assert.match(text, /ACTIVE TIME \(EST\.\) \.+ ~/);
+  // the two detection heuristics stay in the Receipt but are no longer printed (v0.2.1)
+  assert.ok(!/TEST RUNS DETECTED|CLAUDE COMMITS DETECTED/.test(text));
 });
 
 test("null metrics are omitted, never shown as 0, and their count is stated", async () => {
   const r = await receiptOf("killed.jsonl");
   const text = renderTerminal(r);
-  const nulls = all(r).filter((m) => m.value === null);
-  assert.ok(nulls.length > 10);
-  for (const m of nulls) assert.ok(!text.includes(`${LABELS[m.id]} `) || m.id === "tokens.input" && false, `${m.id} should not be shown`);
-  assert.match(text, new RegExp(`${nulls.length} metrics unavailable, not shown`));
+  const nulls = all(r).filter((m) => m.value === null && isDisplayed(m.id));
+  assert.ok(nulls.length > 5);
+  for (const m of all(r).filter((x) => x.value === null)) assert.ok(!text.includes(`${LABELS[m.id]} `), `${m.id} should not be shown`);
+  assert.match(text, new RegExp(`${nulls.length} metrics unavailable, not shown`), "the count covers displayed metrics only");
   assert.ok(!/TOKENS IN|API EQUIVALENT/.test(text), "no tokens or cost were recorded: none are shown");
 });
 

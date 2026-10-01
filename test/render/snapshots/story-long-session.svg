@@ -1,0 +1,135 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="624" height="1848" viewBox="0 0 624 1848" xml:space="preserve">
+<defs><style>text{font-family:"IBM Plex Mono",monospace;white-space:pre}</style>
+<filter id="paper-shadow" x="-5%" y="-2%" width="110%" height="104%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1C1C1A" flood-opacity="0.18"/></filter></defs>
+<rect width="624" height="1848" fill="#E8E5DE"/>
+<path d="M24 24L36 30L48 24L60 30L72 24L84 30L96 24L108 30L120 24L132 30L144 24L156 30L168 24L180 30L192 24L204 30L216 24L228 30L240 24L252 30L264 24L276 30L288 24L300 30L312 24L324 30L336 24L348 30L360 24L372 30L384 24L396 30L408 24L420 30L432 24L444 30L456 24L468 30L480 24L492 30L504 24L516 30L528 24L540 30L552 24L564 30L576 24L588 30L600 24L600 1824L588 1818L576 1824L564 1818L552 1824L540 1818L528 1824L516 1818L504 1824L492 1818L480 1824L468 1818L456 1824L444 1818L432 1824L420 1818L408 1824L396 1818L384 1824L372 1818L360 1824L348 1818L336 1824L324 1818L312 1824L300 1818L288 1824L276 1818L264 1824L252 1818L240 1824L228 1818L216 1824L204 1818L192 1824L180 1818L168 1824L156 1818L144 1824L132 1818L120 1824L108 1818L96 1824L84 1818L72 1824L60 1818L48 1824L36 1818L24 1824Z" fill="#FAF8F2" filter="url(#paper-shadow)"/>
+<text x="312" y="79.63" font-size="15" fill="#6B6A64" text-anchor="middle" letter-spacing="3">YOU'VE BEEN BUSY.</text>
+<text x="312" y="135" font-size="40" font-weight="700" fill="#1C1C1A" text-anchor="middle" letter-spacing="6">CLAUDE RECEIPT</text>
+<text x="312" y="163.63" font-size="15" fill="#6B6A64" text-anchor="middle">itemized session record</text>
+<line x1="60" y1="173.75" x2="564" y2="173.75" stroke="#1C1C1A" stroke-width="1.5"/><line x1="60" y1="178.25" x2="564" y2="178.25" stroke="#1C1C1A" stroke-width="1.5"/>
+<text x="60" y="205.5" font-size="20" fill="#1C1C1A">SESSION</text>
+<line x1="156" y1="205.5" x2="432" y2="205.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="205.5" font-size="20" fill="#1C1C1A" text-anchor="end">ordinary</text>
+<text x="60" y="233.5" font-size="20" fill="#1C1C1A">PROJECT</text>
+<line x1="156" y1="233.5" x2="444" y2="233.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="233.5" font-size="20" fill="#1C1C1A" text-anchor="end">project</text>
+<text x="60" y="261.5" font-size="20" fill="#1C1C1A">STARTED</text>
+<line x1="156" y1="261.5" x2="336" y2="261.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="261.5" font-size="20" fill="#1C1C1A" text-anchor="end">2026-09-28 09:52</text>
+<text x="60" y="289.5" font-size="20" fill="#1C1C1A">ENDED</text>
+<line x1="132" y1="289.5" x2="336" y2="289.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="289.5" font-size="20" fill="#1C1C1A" text-anchor="end">2026-09-28 09:52</text>
+<text x="60" y="317.5" font-size="20" fill="#1C1C1A">ENTRY</text>
+<line x1="132" y1="317.5" x2="432" y2="317.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="317.5" font-size="20" fill="#1C1C1A" text-anchor="end">HEADLESS</text>
+<text x="60" y="345.5" font-size="20" fill="#1C1C1A">STATUS</text>
+<line x1="144" y1="345.5" x2="432" y2="345.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="345.5" font-size="20" fill="#1C1C1A" text-anchor="end">COMPLETE</text>
+<text x="78.23" y="412" font-size="32" font-weight="700" fill="#1C1C1A">3h 20m</text>
+<text x="195.43" y="397.6" font-size="13" font-weight="700" fill="#1C1C1A">*</text>
+<text x="140.73" y="434" font-size="13" fill="#6B6A64" text-anchor="middle" letter-spacing="2">DURATION</text>
+<text x="239.7" y="412" font-size="32" font-weight="700" fill="#1C1C1A">126,465</text>
+<text x="306.9" y="434" font-size="13" fill="#6B6A64" text-anchor="middle" letter-spacing="2">TOKENS OUT</text>
+<text x="430.17" y="412" font-size="32" font-weight="700" fill="#1C1C1A">$8.43</text>
+<text x="478.17" y="434" font-size="13" fill="#6B6A64" text-anchor="middle" letter-spacing="2">API EQUIVALENT</text>
+<text x="312" y="486.38" font-size="17" font-weight="700" fill="#1C1C1A" text-anchor="middle" letter-spacing="2">YOU SHIPPED</text>
+<line x1="169.9" y1="480" x2="233.9" y2="480" stroke="#1C1C1A" stroke-width="1" stroke-dasharray="4 4"/>
+<line x1="390.1" y1="480" x2="454.1" y2="480" stroke="#1C1C1A" stroke-width="1" stroke-dasharray="4 4"/>
+<text x="125.05" y="536" font-size="44" font-weight="700" fill="#1C1C1A">+872</text>
+<text x="232.65" y="516.2" font-size="18" font-weight="700" fill="#1C1C1A">*</text>
+<text x="184.25" y="558" font-size="13" fill="#6B6A64" text-anchor="middle" letter-spacing="2">LINES ADDED</text>
+<text x="403.45" y="536" font-size="44" font-weight="700" fill="#1C1C1A">-8</text>
+<text x="458.25" y="516.2" font-size="18" font-weight="700" fill="#1C1C1A">*</text>
+<text x="436.25" y="558" font-size="13" fill="#6B6A64" text-anchor="middle" letter-spacing="2">LINES REMOVED</text>
+<text x="312" y="610.38" font-size="17" font-weight="700" fill="#1C1C1A" text-anchor="middle" letter-spacing="2">DOWN THE RABBIT HOLE</text>
+<line x1="115" y1="604" x2="179" y2="604" stroke="#1C1C1A" stroke-width="1" stroke-dasharray="4 4"/>
+<line x1="445" y1="604" x2="509" y2="604" stroke="#1C1C1A" stroke-width="1" stroke-dasharray="4 4"/>
+<text x="60" y="641.5" font-size="20" fill="#1C1C1A">TOOL CALLS</text>
+<line x1="192" y1="641.5" x2="504" y2="641.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="641.5" font-size="20" fill="#1C1C1A" text-anchor="end">60</text>
+<text x="552" y="641.5" font-size="20" fill="#1C1C1A">*</text>
+<text x="60" y="669.5" font-size="20" fill="#1C1C1A">TIME</text>
+<line x1="120" y1="669.5" x2="444" y2="669.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="669.5" font-size="20" fill="#1C1C1A" text-anchor="end">16m 58s</text>
+<text x="552" y="669.5" font-size="20" fill="#1C1C1A">*</text>
+<text x="312" y="722.38" font-size="17" font-weight="700" fill="#1C1C1A" text-anchor="middle" letter-spacing="2">YOUR TOOLBOX</text>
+<line x1="163.8" y1="716" x2="227.8" y2="716" stroke="#1C1C1A" stroke-width="1" stroke-dasharray="4 4"/>
+<line x1="396.2" y1="716" x2="460.2" y2="716" stroke="#1C1C1A" stroke-width="1" stroke-dasharray="4 4"/>
+<text x="60" y="753.5" font-size="20" fill="#1C1C1A">Bash</text>
+<line x1="120" y1="753.5" x2="504" y2="753.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="753.5" font-size="20" fill="#1C1C1A" text-anchor="end">38</text>
+<text x="60" y="781.5" font-size="20" fill="#1C1C1A">Read</text>
+<line x1="120" y1="781.5" x2="504" y2="781.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="781.5" font-size="20" fill="#1C1C1A" text-anchor="end">38</text>
+<text x="60" y="809.5" font-size="20" fill="#1C1C1A">Write</text>
+<line x1="132" y1="809.5" x2="504" y2="809.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="809.5" font-size="20" fill="#1C1C1A" text-anchor="end">11</text>
+<text x="312" y="862.38" font-size="17" font-weight="700" fill="#1C1C1A" text-anchor="middle" letter-spacing="2">THE LONGEST TURN</text>
+<line x1="139.4" y1="856" x2="203.4" y2="856" stroke="#1C1C1A" stroke-width="1" stroke-dasharray="4 4"/>
+<line x1="420.6" y1="856" x2="484.6" y2="856" stroke="#1C1C1A" stroke-width="1" stroke-dasharray="4 4"/>
+<text x="211.1" y="924" font-size="52" font-weight="700" fill="#1C1C1A">6m 52s</text>
+<text x="400.3" y="900.6" font-size="21" font-weight="700" fill="#1C1C1A">*</text>
+<text x="312" y="946" font-size="13" fill="#6B6A64" text-anchor="middle" letter-spacing="2">LONGEST TURN</text>
+<text x="60" y="1005.5" font-size="20" font-weight="700" fill="#1C1C1A">HARD STATS</text>
+<line x1="192" y1="998" x2="564" y2="998" stroke="#1C1C1A" stroke-width="1" stroke-dasharray="4 4"/>
+<text x="60" y="1033.5" font-size="20" fill="#1C1C1A">ACTIVE TIME (EST.)</text>
+<line x1="288" y1="1033.5" x2="480" y2="1033.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="1033.5" font-size="20" fill="#1C1C1A" text-anchor="end">~21s</text>
+<text x="60" y="1061.5" font-size="20" fill="#1C1C1A">CLAUDE WORKING</text>
+<line x1="240" y1="1061.5" x2="492" y2="1061.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="1061.5" font-size="20" fill="#1C1C1A" text-anchor="end">12s</text>
+<text x="60" y="1089.5" font-size="20" fill="#1C1C1A">MODELS</text>
+<text x="84" y="1117.5" font-size="20" fill="#1C1C1A">haiku-4-5</text>
+<text x="60" y="1145.5" font-size="20" fill="#1C1C1A">TOKENS IN</text>
+<line x1="180" y1="1145.5" x2="504" y2="1145.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="1145.5" font-size="20" font-weight="700" fill="#1C1C1A" text-anchor="end">42</text>
+<text x="60" y="1173.5" font-size="20" fill="#1C1C1A">CACHE READ</text>
+<line x1="192" y1="1173.5" x2="444" y2="1173.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="1173.5" font-size="20" fill="#1C1C1A" text-anchor="end">139,624</text>
+<text x="60" y="1201.5" font-size="20" fill="#1C1C1A">CACHE WRITE</text>
+<line x1="204" y1="1201.5" x2="456" y2="1201.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="1201.5" font-size="20" fill="#1C1C1A" text-anchor="end">15,208</text>
+<text x="60" y="1229.5" font-size="20" fill="#1C1C1A">PROMPTS</text>
+<line x1="156" y1="1229.5" x2="516" y2="1229.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="1229.5" font-size="20" fill="#1C1C1A" text-anchor="end">1</text>
+<text x="60" y="1257.5" font-size="20" fill="#1C1C1A">TOOL CALLS</text>
+<line x1="192" y1="1257.5" x2="516" y2="1257.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="1257.5" font-size="20" fill="#1C1C1A" text-anchor="end">4</text>
+<text x="60" y="1317.5" font-size="20" font-weight="700" fill="#1C1C1A">CODING STATS</text>
+<line x1="216" y1="1310" x2="564" y2="1310" stroke="#1C1C1A" stroke-width="1" stroke-dasharray="4 4"/>
+<text x="60" y="1345.5" font-size="20" fill="#1C1C1A">FILES READ</text>
+<line x1="192" y1="1345.5" x2="516" y2="1345.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="1345.5" font-size="20" fill="#1C1C1A" text-anchor="end">0</text>
+<text x="552" y="1345.5" font-size="20" fill="#1C1C1A">*</text>
+<text x="60" y="1373.5" font-size="20" fill="#1C1C1A">FILES CREATED</text>
+<line x1="228" y1="1373.5" x2="516" y2="1373.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="1373.5" font-size="20" fill="#1C1C1A" text-anchor="end">1</text>
+<text x="552" y="1373.5" font-size="20" fill="#1C1C1A">*</text>
+<text x="60" y="1401.5" font-size="20" fill="#1C1C1A">FILES EDITED</text>
+<line x1="216" y1="1401.5" x2="516" y2="1401.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="1401.5" font-size="20" fill="#1C1C1A" text-anchor="end">1</text>
+<text x="552" y="1401.5" font-size="20" fill="#1C1C1A">*</text>
+<text x="60" y="1429.5" font-size="20" fill="#1C1C1A">MOST EDITED</text>
+<line x1="204" y1="1429.5" x2="420" y2="1429.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="1429.5" font-size="20" fill="#1C1C1A" text-anchor="end">file1.txt</text>
+<text x="552" y="1429.5" font-size="20" fill="#1C1C1A">*</text>
+<text x="60" y="1457.5" font-size="20" fill="#1C1C1A">LANGUAGES</text>
+<text x="84" y="1485.5" font-size="20" fill="#1C1C1A">Text</text>
+<line x1="144" y1="1485.5" x2="444" y2="1485.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="1485.5" font-size="20" fill="#1C1C1A" text-anchor="end">4 lines</text>
+<text x="552" y="1485.5" font-size="20" fill="#1C1C1A">*</text>
+<text x="60" y="1545.5" font-size="20" font-weight="700" fill="#1C1C1A">SESSION LORE</text>
+<line x1="216" y1="1538" x2="564" y2="1538" stroke="#1C1C1A" stroke-width="1" stroke-dasharray="4 4"/>
+<text x="60" y="1573.5" font-size="20" fill="#1C1C1A">CACHE HIT RATE</text>
+<line x1="240" y1="1573.5" x2="492" y2="1573.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="1573.5" font-size="20" fill="#1C1C1A" text-anchor="end">90%</text>
+<text x="552" y="1573.5" font-size="20" fill="#1C1C1A">*</text>
+<line x1="60" y1="1609.75" x2="564" y2="1609.75" stroke="#1C1C1A" stroke-width="1.5"/><line x1="60" y1="1614.25" x2="564" y2="1614.25" stroke="#1C1C1A" stroke-width="1.5"/>
+<text x="60" y="1635.63" font-size="15" fill="#6B6A64">1 metric unavailable, not shown</text>
+<text x="60" y="1655.63" font-size="15" fill="#6B6A64">plain    recorded directly</text>
+<text x="60" y="1675.63" font-size="15" fill="#6B6A64">  *      computed from data</text>
+<text x="60" y="1695.63" font-size="15" fill="#6B6A64">  ~      heuristic estimate</text>
+<text x="60" y="1715.63" font-size="15" fill="#6B6A64">API EQUIVALENT = these tokens at API list prices</text>
+<text x="60" y="1735.63" font-size="15" fill="#6B6A64">times: UTC</text>
+<text x="312" y="1777.5" font-size="20" fill="#1C1C1A" text-anchor="middle" letter-spacing="1">THANK YOU FOR SHIPPING</text>
+</svg>

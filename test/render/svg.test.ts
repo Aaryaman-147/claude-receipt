@@ -11,9 +11,10 @@ import { loadFonts } from "../../src/assets.ts";
 import { redactReceipt } from "../../src/receipt/redact.ts";
 import type { Metric, MetricId, Receipt } from "../../src/receipt/types.ts";
 import { validateReceipt } from "../../src/receipt/validate.ts";
-import { displayWidth, LEGEND, LIVE_BAND } from "../../src/render/format.ts";
+import { displayWidth, isDisplayed, LEGEND, LIVE_BAND } from "../../src/render/format.ts";
 import { renderTerminal } from "../../src/render/tty.ts";
 import { toSvg } from "../../src/render/svg.ts";
+import { sessionView } from "../../src/render/view.ts";
 import { layoutReceipt, type TextItem, type VisualDoc } from "../../src/render/visual/layout.ts";
 import { TEXT_LEFT, TEXT_RIGHT, VISUAL } from "../../src/render/visual/spec.ts";
 import { loadSessions, refForFile } from "../../src/source/claude-code/index.ts";
@@ -41,7 +42,8 @@ async function fullReceipt(): Promise<Receipt> {
   assert.ok(all(full).every((m) => m.value !== null));
   return full;
 }
-const shownIn = (m: Metric) => m.value !== null && (!Array.isArray(m.value) || m.value.length > 0) && !(m.id === "toolCalls.byName" && !Object.keys(m.value as object).length);
+// shown = has a value and is displayed (v0.2.1 hides some metrics from the printed receipt)
+const shownIn = (m: Metric) => m.value !== null && (!Array.isArray(m.value) || m.value.length > 0) && !(m.id === "toolCalls.byName" && !Object.keys(m.value as object).length) && isDisplayed(m.id);
 
 // Every metric's value items carry its id, provenance and the mark of that provenance; marks appear nowhere else.
 function assertProvenance(r: Receipt) {
@@ -55,7 +57,9 @@ function assertProvenance(r: Receipt) {
       const want = m.provenance === "derived" ? "*" : m.provenance === "heuristic" ? "~" : "";
       assert.equal(t.mark, want, `${t.metricId}: mark`);
       assert.equal(t.text.startsWith("~"), m.provenance === "heuristic", `${t.metricId}: "~" iff heuristic: "${t.text}"`);
-      const markItem = tagged.find((x) => x.part === "mark" && x.y === t.y && x.metricId === t.metricId);
+      // a row's "*" shares its baseline; a big number's "*" is raised beside it, within the number's height
+      const size = t.size ?? VISUAL.type[t.role].size;
+      const markItem = tagged.find((x) => x.part === "mark" && x.metricId === t.metricId && x.y <= t.y && x.y > t.y - size && x.x >= t.x);
       assert.equal(!!markItem, m.provenance === "derived", `${t.metricId}: "*" iff derived`);
       if (markItem) { assert.equal(markItem.text, "*"); assert.equal(markItem.weight, t.weight, "mark has its value's weight"); assert.equal(markItem.ink, t.ink); }
       if (m.provenance === "heuristic") assert.equal(t.weight, 400, `${t.metricId}: heuristic is never bold`);
@@ -80,7 +84,7 @@ function assertBounds(doc: VisualDoc) {
     const [x1, x2] = i.kind === "text" ? (i.anchor === "start" ? [i.x, i.x + i.width] : i.anchor === "end" ? [i.x - i.width, i.x] : [i.x - i.width / 2, i.x + i.width / 2])
       : i.kind === "band" ? [i.x, i.x + i.width] : [i.x1, i.x2];
     assert.ok(x1 >= TEXT_LEFT - 1e-9 && x2 <= TEXT_RIGHT + 1e-9 && x1 <= x2, `${i.kind} "${"text" in i ? i.text : ""}" x ${x1}..${x2} outside text area`);
-    const [y1, y2] = i.kind === "text" ? [i.y - VISUAL.type[i.role].size, i.y] : i.kind === "band" ? [i.y, i.y + i.height] : [i.y, i.y];
+    const [y1, y2] = i.kind === "text" ? [i.y - (i.size ?? VISUAL.type[i.role].size), i.y] : i.kind === "band" ? [i.y, i.y + i.height] : [i.y, i.y];
     assert.ok(y1 > top + d && y2 < bottom - d, `${i.kind} y ${y1}..${y2} crosses a torn edge`);
   }
 }
@@ -115,7 +119,8 @@ test("unavailable metrics: never drawn as 0, counted once in the footer", async 
   assert.ok(nulls.length > 0);
   const doc = assertProvenance(r);
   for (const m of nulls) assert.ok(!texts(doc).some((t) => t.metricId === m.id), `${m.id} drawn`);
-  assert.ok(texts(doc).some((t) => t.text === `${nulls.length} metrics unavailable, not shown`));
+  const counted = nulls.filter((m) => isDisplayed(m.id)).length; // hidden metrics are not counted (v0.2.1)
+  assert.ok(texts(doc).some((t) => t.text === `${counted} metric${counted === 1 ? "" : "s"} unavailable, not shown`));
   const allNull = mapMetrics(r, (m) => ({ ...m, value: null } as Metric));
   const d2 = layoutReceipt(allNull);
   assert.ok(!texts(d2).some((t) => t.metricId), "nothing metric-shaped drawn");
@@ -130,23 +135,30 @@ test("structure: header, identity, sections and footer in the documented order",
   const r = { ...(await fullReceipt()), session: { ...(await fullReceipt()).session, live: true, title: "fixture title" } };
   const order = texts(layoutReceipt(r)).map((t) => t.text);
   const at = (s: string) => { const i = order.findIndex((t) => t === s || t.startsWith(s)); assert.ok(i >= 0, `missing ${s}`); return i; };
-  const seq = ["CLAUDE RECEIPT", "itemized session record", "SESSION", "PROJECT", "STATUS", "\"fixture title\"", LIVE_BAND, "HARD STATS", "DURATION", "API EQUIVALENT", "CODING STATS", "SESSION LORE", "plain    recorded directly", "API EQUIVALENT = ", "times: UTC"];
+  const v = sessionView(r);
+  const seq = [v.opening, "CLAUDE RECEIPT", "itemized session record", "SESSION", "PROJECT", "STATUS", "\"fixture title\"", LIVE_BAND, "DURATION", "API EQUIVALENT", ...v.beats.map((b) => b.heading), "HARD STATS", "CODING STATS", "SESSION LORE", "plain    recorded directly", "API EQUIVALENT = ", "times: UTC"];
   const idx = seq.map(at);
   assert.deepEqual(idx, [...idx].sort((a, b) => a - b), "order");
-  // metrics keep Receipt order
+  // the hero's metrics, then each beat's, then every other displayed metric in Receipt order, each exactly once
   const drawn = [...new Set(texts(layoutReceipt(r)).filter((t) => t.metricId).map((t) => t.metricId))];
-  assert.deepEqual(drawn, all(r).map((m) => m.id));
+  const story = [...v.hero, ...v.beats.flatMap((b) => b.facts)].map((f) => f.metricId!);
+  assert.deepEqual(drawn, [...new Set([...story, ...all(r).filter((m) => isDisplayed(m.id) && !story.includes(m.id)).map((m) => m.id)])]);
+  const firstSection = texts(layoutReceipt(r)).find((t) => t.text === "HARD STATS")!.y;
+  for (const id of story) assert.ok(texts(layoutReceipt(r)).filter((t) => t.metricId === id).every((t) => t.y < firstSection), `${id} is not repeated in the supporting sections`);
 });
 
-test("emphasis: only the documented primary values are bold; API EQUIVALENT gets the short total rule", async () => {
-  const doc = layoutReceipt(await fullReceipt());
-  const bold = new Set(texts(doc).filter((t) => t.part === "value" && t.weight === 700).map((t) => t.metricId));
-  assert.deepEqual([...bold].sort(), ["cost.apiEquivalent", "lines.added", "lines.removed", "session.duration.wall", "tokens.input", "tokens.output"]);
-  const cost = texts(doc).find((t) => t.metricId === "cost.apiEquivalent" && t.part === "value")!;
-  const rules = doc.items.filter((i) => i.kind === "rule" && i.style === "double");
-  const total = rules.find((i) => i.kind === "rule" && i.y < cost.y && cost.y - i.y < 40)!;
-  assert.ok(total && total.kind === "rule" && total.x1 > TEXT_LEFT && total.x2 === TEXT_RIGHT, "short double rule right above the cost");
-  assert.equal(rules.length, 3, "header, total, footer");
+test("emphasis: bold rows are the documented primaries, big story numbers are bold, a heuristic never is", async () => {
+  const r = await fullReceipt();
+  const doc = layoutReceipt(r);
+  const bold = texts(doc).filter((t) => t.part === "value" && t.weight === 700 && t.metricId);
+  assert.deepEqual([...new Set(bold.filter((t) => t.role === "body").map((t) => t.metricId))].sort(), ["tokens.input"], "the primaries left in rows");
+  assert.deepEqual([...new Set(bold.filter((t) => t.role === "display").map((t) => t.metricId))].sort(), ["cost.apiEquivalent", "lines.added", "lines.removed", "session.duration.wall", "tokens.output"]);
+  const h = layoutReceipt(mapMetrics(r, (m) => (m.id === "tokens.output" ? { ...m, provenance: "heuristic" } as Metric : m)));
+  const out = texts(h).find((t) => t.metricId === "tokens.output" && t.part === "value")!;
+  assert.deepEqual([out.role, out.weight, out.text.startsWith("~")], ["display", 400, true], "a heuristic hero number: ~ and regular weight");
+  // API EQUIVALENT is a hero number here, so no total rule; histories keep it (history-visual.test)
+  assert.equal(texts(doc).find((t) => t.metricId === "cost.apiEquivalent" && t.part === "value")!.role, "display");
+  assert.equal(doc.items.filter((i) => i.kind === "rule" && i.style === "double").length, 2, "header, footer");
 });
 
 test("live: the band sits under the identity block and STATUS stays LIVE", async () => {
@@ -195,7 +207,8 @@ test("long and wide values: cut with … or moved to their own line, never past 
     assertBounds(doc);
     assertProvenance(r);
     for (const t of texts(doc).filter((x) => x.role !== "title")) assert.ok(displayWidth(t.text) <= (t.role === "small" ? 56 : VISUAL.grid.columns), `"${t.text.slice(0, 20)}" is ${displayWidth(t.text)} columns`);
-    const title = texts(doc).filter((t) => t.text.startsWith("\"") || (t.y > texts(doc).find((x) => x.text === "STATUS")!.y && t.y < texts(doc).find((x) => x.text === "HARD STATS")!.y));
+    const heroTop = Math.min(...texts(doc).filter((x) => x.role === "display").map((x) => x.y - (x.size ?? 0)));
+    const title = texts(doc).filter((t) => t.text.startsWith("\"") || (t.y > texts(doc).find((x) => x.text === "STATUS")!.y && t.y < heroTop && t.role === "body"));
     assert.ok(title.length <= VISUAL.titleMaxLines, "title at most 3 lines");
   }
   // huge numbers keep separators and move to their own right-aligned line when they don't fit
@@ -306,9 +319,9 @@ test("purity: the Receipt is not mutated; layout and SVG modules import no I/O",
   toSvg(layoutReceipt(deepFreeze({ ...r, session: { ...r.session, live: true } })), fonts);
   toSvg(layoutReceipt(deepFreeze(r)), fonts);
   assert.equal(JSON.stringify(r), before);
-  for (const f of ["src/render/visual/layout.ts", "src/render/visual/spec.ts", "src/render/svg.ts", "src/render/format.ts", "src/render/view.ts"]) {
+  for (const f of ["src/render/visual/layout.ts", "src/render/visual/spec.ts", "src/render/svg.ts", "src/render/format.ts", "src/render/view.ts", "src/render/narrative.ts"]) {
     const imports = [...readFileSync(f, "utf8").matchAll(/^import[^;]*?from "([^"]+)"/gm)].map((m) => m[1]);
-    for (const i of imports) assert.match(i!, /^\.\.?\/(\.\.\/receipt\/types|receipt\/types|aggregate\/types|format|view|spec|visual\/layout|visual\/spec|layout)\.ts$/, `${f} imports ${i}`);
+    for (const i of imports) assert.match(i!, /^\.\.?\/(\.\.\/receipt\/types|receipt\/types|aggregate\/types|format|view|narrative|spec|visual\/layout|visual\/spec|layout)\.ts$/, `${f} imports ${i}`);
     assert.ok(!/\b(process\.|Date\.now|new Date\(\)|Math\.random|require\()/.test(readFileSync(f, "utf8")), `${f}: ambient input`);
   }
 });

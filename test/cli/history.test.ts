@@ -218,7 +218,7 @@ test("--redact: no project names or paths, MCP tools grouped, still a valid cont
     assert.equal(t.code, 0);
     assert.ok(!/alpha|beta|work/.test(t.out), `${argv.join(" ")}: names or paths in terminal output`);
   }
-  assert.match((await cli(h, ["all", "--project", "--redact"], { cwd: "C:\\work\\alpha" })).out, /PROJECT \.+ THIS DIRECTORY\n/);
+  assert.match((await cli(h, ["all", "--project", "--redact"], { cwd: "C:\\work\\alpha" })).out, /PROJECT \.+ ONE PROJECT \(HIDDEN\)\n/);
   // MCP grouping is structural, on the value, before serialization
   const unred = await json(h, ["all"]);
   const withMcp = { ...unred, sections: { ...unred.sections, hard: unred.sections.hard.map((m) => (m.id === "agg.toolCalls.byName" ? { ...m, value: { mcp__srv__a: 2, mcp__other__b: 1, Bash: 2 } } : m)) } } as HistoryReceipt;
@@ -313,7 +313,7 @@ test("export history: --no-redact shows project names; --project with --redact s
   const proj = await cli(h, ["export", "week", "--project", "--svg", "-o", join(pd, "x.svg")], { cwd: "C:\\work\\alpha" });
   assert.equal(proj.code, 0, proj.err);
   const ptext = drawn(readFileSync(join(pd, "x.svg"), "utf8"));
-  assert.ok(ptext.includes(">THIS DIRECTORY</text>") && !/alpha|beta|work/.test(ptext), "project-filtered and redacted: no key, path or name");
+  assert.ok(ptext.includes(">ONE PROJECT (HIDDEN)</text>") && !/alpha|beta|work/.test(ptext), "project-filtered and redacted: no key, path or name");
   // repeated exports get -2, -3; an existing --output is refused untouched
   const rep = outDir();
   for (let i = 0; i < 3; i++) assert.equal((await cli(h, ["export", "all", "--svg"], { cwd: rep })).code, 0);

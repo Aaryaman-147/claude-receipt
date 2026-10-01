@@ -13,6 +13,8 @@ The work is delivered in four implementation stages, named descriptively so they
 
 (These stages were drafted as "M4a–M4d" in conversation; those labels are not milestone numbers. The general npm release remains official **M4**.)
 
+**v0.2.1** redesigned the image as a short story (opening, big numbers, beats, observation; §6) on the same paper, grid, fonts and pipeline. The terminal receipt is unchanged by it.
+
 ## 1. Principles
 
 - **The receipt is the product.** It should look like Claude Code printed a thermal-paper receipt for the session: narrow paper, monochrome, monospace, dotted and solid rules, torn edges, a little playful microcopy. Not a dashboard, not an analytics card, not an infographic.
@@ -73,30 +75,35 @@ The receipt is a character grid, like the terminal receipt.
 | Section heading | 20 px Bold, uppercase |
 | Weights | Regular (labels, most values), Bold (title, headings, emphasized values) |
 | Line height | 28 px body, 20 px small |
-| Section spacing | 24 px above each section heading |
+| Story text (v0.2.1) | opening 15 px letter-spaced (3 px); labels under big numbers 13 px letter-spaced (2 px), secondary ink; beat headings 17 px Bold letter-spaced (2 px); big numbers Bold, hero 48–24 px, beat numbers 60 / 52 / 44 px (smaller only if a value wouldn't fit) |
+| Section spacing | 32 px above each section heading (24 px before v0.2.1); about 40 px above each beat heading |
 | Edge allowance | 40 px top and bottom for the torn edges |
-| Double rule | two 1.5 px lines, 3 px apart: under the header, above the legend, above API EQUIVALENT (short) |
-| Section rule | dashed 1 px (4 on, 4 off) |
+| Double rule | two 1.5 px lines, 3 px apart: under the header, above the legend, above API EQUIVALENT when it is a supporting row (short) |
+| Section rule | dashed 1 px (4 on, 4 off); also up to 64 px either side of a beat heading |
 | Leaders | dotted (round dots, 6 px pitch, secondary ink) between label and value |
 | Alignment | labels left-aligned at column 0; values right-aligned to column 40; columns 41–42 are the provenance mark column |
 
 ## 6. Information hierarchy
 
-Top to bottom (the same order as the terminal receipt):
+Top to bottom (v0.2.1: the image tells the receipt as a short story; the story rules are in `METRICS.md` → Receipt story):
 
 1. Torn top edge.
-2. Title `C L A U D E   R E C E I P T` and the subtitle `itemized session record`.
-3. Double rule.
-4. Identity block: SESSION (8 characters), PROJECT, STARTED, ENDED, ENTRY, STATUS, FORK OF; the title (if present) wrapped to at most 3 lines, then `…`.
-5. **LIVE band** for a live session: a solid ink band with inverted text `LIVE · STILL RUNNING`.
-6. HARD STATS, CODING STATS, SESSION LORE, in Receipt order.
-7. Double rule, then: the count of unavailable metrics, the provenance legend (marks in use only), the API-equivalent note, `times: <zone>`.
-8. Footer microcopy (chosen deterministically from the session id, as in the terminal).
-9. Torn bottom edge.
+2. **Opening line** (15 px, letter-spaced, secondary ink), for example `HERE'S YOUR RECEIPT.`
+3. Title `C L A U D E   R E C E I P T` and the subtitle (`itemized session record` or `itemized history`).
+4. Double rule.
+5. Header: a session's identity block (SESSION, PROJECT, STARTED, ENDED, ENTRY, STATUS, FORK OF; the title, if present, wrapped to at most 3 lines, then `…`), or a history's coverage block (PERIOD, PROJECT for one project, FIRST, LAST, DAYS WITH DATA, UNDATED, LIVE (NOT COUNTED), INCOMPLETE). Header rows that the big numbers already show (a history's SESSIONS and PROJECTS) are left out.
+6. **LIVE band** for a live session: a solid ink band with inverted text `LIVE · STILL RUNNING`.
+7. **Big numbers (hero)**, up to 3 side by side, each with a small letter-spaced label below. Sizing: each column is as wide as its widest part (the number with its mark, or its label); the row uses the largest size from 48 px down to 24 px, in 2 px steps, at which all columns fit with at least 32 px between them, spaced evenly around content-sized columns (not forced into equal thirds). If even 24 px doesn't fit, each number gets its own row. Numbers never overlap.
+8. **Story beats**, up to 5: a centred 17 px bold letter-spaced heading between short dashed rules, about 40 px of paper above it. Single facts (YOUR BIGGEST DAY, THE LONGEST TURN, NICE RUN, THE LONG ONE) are one big number with its label and, where there is one, a date line; YOU SHIPPED is two big numbers side by side; list beats (YOUR TOOLBOX, DOWN THE RABBIT HOLE, WHERE YOU WORKED) are leader rows.
+9. HARD STATS, CODING STATS, SESSION LORE, in Receipt order, without the metrics the story already showed; a section left empty is omitted.
+10. **Observation**, at most one: `NIGHT OWL ~` (17 px, regular weight) and its sentence, centred.
+11. Double rule, then: the count of unavailable metrics, partial-coverage notes (histories), the provenance legend (marks in use only), the API-equivalent note, `times: <zone>`.
+12. Closing line (chosen deterministically, as in the terminal).
+13. Torn bottom edge.
 
-**Emphasis without reordering.** ARCHITECTURE §4 forbids renderers from changing metric order, so primary values are emphasized in place, in Bold: DURATION, TOKENS IN, TOKENS OUT, API EQUIVALENT, LINES ADDED, LINES REMOVED. API EQUIVALENT also gets a short double rule above it, echoing a receipt's total line, while keeping its `API EQUIVALENT` label. **A heuristic value is never Bold.**
+**Emphasis without reordering.** ARCHITECTURE §4 forbids renderers from changing metric order, so primary values left in the supporting rows are emphasized in place, in Bold: DURATION, TOKENS IN, TOKENS OUT, API EQUIVALENT, LINES ADDED, LINES REMOVED. Big story numbers are Bold. API EQUIVALENT, when it is a supporting row (histories), gets a short double rule above it, echoing a receipt's total line, while keeping its `API EQUIVALENT` label. **A heuristic value is never Bold**, big or small.
 
-**Lists** are capped as in the terminal: top 3 tools, languages and programs; all models, up to 5. Sections with no shown metrics are omitted. Nothing is dropped for space, because the paper grows with content.
+**Lists** are capped as in the terminal: top 3 tools (YOUR TOOLBOX), languages and projects; all models, up to 5. The full lists stay in the Receipt and `--json`. Nothing is dropped for space, because the paper grows with content.
 
 **Unavailable metrics** are omitted (never shown as `0`) and counted: `N metrics unavailable, not shown`.
 
@@ -106,7 +113,8 @@ Top to bottom (the same order as the terminal receipt):
 |---|---|
 | exact | Plain value |
 | derived | ` *` in the reserved mark column (columns 41–42) |
-| heuristic | `~` directly before the value, plus the existing honest labels (`ACTIVE TIME (EST.)`, `TEST RUNS DETECTED`, `CLAUDE COMMITS DETECTED`) |
+| heuristic | `~` directly before the value, plus the existing honest labels (`ACTIVE TIME (EST.)`); an observation's heading ends in `~` |
+| derived (big number) | a raised `*` directly after the number, at 40 % of its size, in the same weight |
 
 - The legend uses the exact strings of `LEGEND` in `format.ts` (`plain    recorded directly`, `  *      computed from data`, `  ~      heuristic estimate`), listing only the marks in use.
 - Marks are drawn in the same ink and weight as their value, never faded, and never rely on colour.
@@ -114,9 +122,10 @@ Top to bottom (the same order as the terminal receipt):
 
 ## 8. Copy
 
-All copy lives in the `format` module, never in the Receipt.
-- Labels, legend, footers and the API-equivalent note are shared with the terminal.
-- The only visual-specific string is the LIVE band text (`LIVE · STILL RUNNING`).
+All copy lives in the render layer, never in the Receipt.
+- Labels, legend, footers and the API-equivalent note are shared with the terminal (`format.ts`).
+- The story's words (openings, beat headings, observations; the closings are the shared footers) are one fixed table, `COPY` in `narrative.ts`; the image draws nothing else.
+- The only other visual-specific string is the LIVE band text (`LIVE · STILL RUNNING`).
 
 Copy is short, observational and non-evaluative. It makes no claims about productivity, quality or time saved. Cost is always `API EQUIVALENT`; the words "spent", "paid", "charged" and "bill" never appear.
 
@@ -139,7 +148,8 @@ Copy is short, observational and non-evaluative. It makes no claims about produc
 | No coding activity, no tools | Empty sections omitted; unavailable metrics counted |
 | No repository / no commits | Unavailable git metrics omitted and counted; an empty repository shows commits `0` |
 | Many tools or languages | Top 3 |
-| Long project, file or model names | Cut to fit (grid columns) with `…` |
+| Long project, file or model names | Cut to fit (grid columns) with `…`; in a leader row the value moves to its own right-aligned line |
+| Wide big numbers | Smaller hero size, never overlapping; one number per row if nothing fits (§6) |
 | Long title | Wrapped, at most 3 lines, then `…` |
 | Unicode names | Layout never overflows (§4); glyphs limited to IBM Plex Mono coverage |
 | Very large values | Numbers keep thousands separators; a value that doesn't fit beside its label moves to its own right-aligned line (the terminal rule). `usd()` gains thousands separators in the SVG stage (unchanged output for every current fixture) |
@@ -150,8 +160,10 @@ Copy is short, observational and non-evaluative. It makes no claims about produc
 
 ```
 src/render/format.ts         shared with the terminal: labels, copy, value formatting, marks, display width
+src/render/narrative.ts      the story: opening, big numbers, beats, observation, closing (pure; METRICS.md → Receipt story)
+src/render/view.ts           Receipt / HistoryReceipt → ReceiptView (shared with the terminal; carries the story)
 src/render/visual/spec.ts    the design system above, as one constant object
-src/render/visual/layout.ts  Receipt → VisualDoc (pure; pixel geometry from the grid)
+src/render/visual/layout.ts  ReceiptView → VisualDoc (pure; pixel geometry from the grid)
 src/render/svg.ts            VisualDoc + font bytes → SVG string (pure)
 src/render/png.ts            SVG + font bytes → PNG bytes via @resvg/resvg-wasm   (PNG stage)
 src/cli/run.ts               `export` arguments, session selection (shared with the receipt command), redaction
@@ -166,11 +178,14 @@ assets/fonts/                IBM Plex Mono Regular and Bold (unmodified) + OFL-1
 
 History images (v0.2): `claude-receipt export all | week | month [--project] [--png | --svg] [-o <file>] [--no-redact]` writes the history as the same visual receipt (subtitle `itemized history`, a coverage header, no band), through `historyView` → `layoutView` → the same SVG and 2× PNG pipeline. It is redacted by default like any export (project key and top project names hidden, MCP tools grouped; `--no-redact` is the opt-out). Default names are `./claude-receipt-<period>.png` (`-project` added with `--project`; `-2`, `-3`, … if taken), never a project name or path; `--output`, overwrite refusal and `--no-archive` behave as for session exports.
 
+One-project history images (v0.2.1): `claude-receipt project <name-or-path> [all | week | month] export [--png | --svg] [-o <file>] [--no-redact]` writes the same history as `export <period> --project` run inside that project's directory (project matching: README → One project). Redacted by default (the header says `ONE PROJECT (HIDDEN)`); the default name is `./claude-receipt-<period>-project.png`, never a project name or path.
+
 ```
 claude-receipt export [last | <session-id-prefix>] [--png | --svg] [-o | --output <file>] [--no-redact] [--no-archive]
+claude-receipt <session-id-prefix> export [last] [--png | --svg] [-o | --output <file>] [--no-redact] [--no-archive]
 ```
 
-- **Session choice** is exactly the receipt command's: no argument = the current directory's latest session (which may be live), else the latest anywhere; `last` = the latest completed session; a prefix must match exactly one session (ambiguous and unknown prefixes fail, exit 1).
+- **Session choice** is exactly the receipt command's: no argument = the current directory's latest session (which may be live), else the latest anywhere; `last` = the latest completed session; a prefix must match exactly one session (ambiguous and unknown prefixes fail, exit 1). `<session-id-prefix> export` and `<session-id-prefix> export last` (v0.2.1) export that session, exactly like `export <session-id-prefix>`; `last` there never selects another session.
 - **Format:** PNG by default (2×, 1248 px wide); `--svg` writes the canonical SVG (624 px logical width, fonts embedded).
 - **Redaction:** on by default. The selected Receipt goes through `redactReceipt()` before layout; `--no-redact` is the only opt-out. Even unredacted, an image holds only Receipt fields (never transcript text or telemetry ids).
 - **File name:** `./claude-receipt-<id>.png` (or `.svg`) in the current directory, where `<id>` is the receipt's session id as drawn: 4 characters when redacted, 8 with `--no-redact`. No project, path or title is ever part of the default name. If that name exists, `-2`, `-3`, … are tried; an earlier export is never replaced.

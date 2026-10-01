@@ -13,9 +13,22 @@ export const VISUAL = {
     heading: { size: 20, weight: 700, lineHeight: 28 },
     body: { size: 20, weight: 400, lineHeight: 28 },
     small: { size: 15, weight: 400, lineHeight: 20 },
+    // the story (v0.2.1): opening line, hero and beat labels, beat headings, big numbers
+    opening: { size: 15, weight: 400, lineHeight: 20, letterSpacing: 3 },
+    label: { size: 13, weight: 400, lineHeight: 18, letterSpacing: 2 },
+    beat: { size: 17, weight: 700, lineHeight: 24, letterSpacing: 2 },
+    display: { size: 52, weight: 700, lineHeight: 60 }, // big numbers; each item carries its own size
+  },
+  story: {
+    hero: { max: 48, min: 24, step: 2, gap: 32, top: 28, bottom: 0 }, // size: the largest at which every column fits
+    beatGap: 40, // space before each beat heading
+    beatRule: 64, // the dashed rule either side of a beat heading
+    big: { day: 60, single: 52, pair: 44 }, // beat numbers, smaller only when a value would not fit
+    mark: 0.4, // a big number's "*": this fraction of the number's size, raised beside it
+    observationGap: 32,
   },
   grid: { columns: 42, markColumns: 2 }, // 504 px text area / 12 px body cells; the last 2 hold the derived mark
-  sectionGap: 24,
+  sectionGap: 32,
   edge: { tooth: 12, depth: 6, allowance: 40 },
   rule: { stroke: 1.5, doubleGap: 3, dashStroke: 1, dash: 4, dashGap: 4, totalColumns: 14 },
   leader: { pitch: 6, dot: 2 },

@@ -1,6 +1,6 @@
 {
   "name": "claude-receipt",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "description": "Local-first receipts for Claude Code sessions: hard stats, coding stats and session lore, in the terminal or as an image",
   "license": "MIT",
   "repository": {

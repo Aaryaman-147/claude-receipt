@@ -15,7 +15,7 @@ const INK = { primary: VISUAL.ink.primary, secondary: VISUAL.ink.secondary, pape
 function item(i: VisualItem): string {
   switch (i.kind) {
     case "text": {
-      const size = VISUAL.type[i.role].size;
+      const size = i.size ?? VISUAL.type[i.role].size;
       const attrs = [
         `x="${num(i.x)}"`, `y="${num(i.y)}"`, `font-size="${size}"`,
         ...(i.weight === 700 ? [`font-weight="700"`] : []),

@@ -21,10 +21,10 @@ const tmp = () => { const d = mkdtempSync(join(tmpdir(), "claude-receipt-upgrade
 const asV010 = (r: Receipt): Receipt => ({ ...r, generator: { ...r.generator, version: "0.1.0" } });
 const A = "aaaa1111-0000-4000-8000-000000000001", B = "bbbb2222-0000-4000-8000-000000000002";
 
-test("versions are synchronized at 0.2.0, and a v0.1.0 archive entry still reads back valid", async () => {
+test("the generator stays 0.2.0 under package 0.2.1 (docs/RELEASE.md), and a v0.1.0 archive entry still reads back valid", async () => {
   const pkg = JSON.parse(readFileSync("package.json", "utf8"));
   assert.equal(GENERATOR.version, "0.2.0");
-  assert.equal(pkg.version, GENERATOR.version);
+  assert.equal(pkg.version, "0.2.1", "a presentation and CLI release does not move the generator");
   const s = (await loadSessions([refForFile(join(FIX, "ordinary.jsonl"))]))[0]!;
   const dir = tmp();
   assert.equal(writeReceipt(asV010(buildReceipt(s, { now: NOW, timeZone: "UTC" })), fingerprintOf(s), { dir }).status, "created");

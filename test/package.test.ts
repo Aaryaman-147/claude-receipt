@@ -7,6 +7,7 @@ import { mkdtempSync, readdirSync, readFileSync, rmSync, statSync } from "node:f
 import { tmpdir } from "node:os";
 import { join, relative } from "node:path";
 import { after, test } from "node:test";
+import { VERSION } from "../src/cli/run.ts";
 import { GENERATOR } from "../src/receipt/types.ts";
 
 const made: string[] = [];
@@ -22,8 +23,11 @@ const files = packed.files.map((f) => f.path.replace(/\\/g, "/")).sort();
 
 test("package metadata: name, version (= generator version), MIT, bin, engines, one pinned runtime dependency", () => {
   assert.equal(pkg.name, "claude-receipt");
-  assert.equal(pkg.version, "0.2.0");
-  assert.equal(GENERATOR.version, pkg.version, "receipts record the package version");
+  assert.equal(pkg.version, "0.2.1");
+  assert.equal(VERSION, pkg.version, "--version reports the package release");
+  // the documented rule (docs/RELEASE.md): the package tracks the release, the generator tracks the
+  // semantic Receipt computation; v0.2.1 changed presentation and the CLI only, so receipts stay 0.2.0
+  assert.equal(GENERATOR.version, "0.2.0");
   assert.equal(pkg.license, "MIT");
   assert.equal(pkg.private, undefined);
   assert.equal(pkg.type, "module");
