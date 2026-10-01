@@ -13,7 +13,7 @@ Claude Receipt turns Claude Code sessions into receipts: hard stats, coding stat
 - M1b (analytics in `src/analytics/`, Receipt model + validator in `src/receipt/`, Receipt JSON in `src/render/json.ts`, read-only git in `src/git/`): implemented.
 - M2 (local metrics-only archive in `src/archive/`): implemented.
 - M3 (CLI in `src/cli/` with the archive sweep, terminal renderer in `src/render/tty.ts` + `format.ts`, redaction in `src/receipt/redact.ts`): implemented.
-- M6 (visual receipt): specified in `docs/VISUAL_RECEIPT.md` and being built ahead of M4/M5, in stages named "Visual Receipt — Spec / SVG / PNG / Packaging" (descriptive stage names, not milestone numbers; never renumber the official roadmap). Only the Spec stage is done.
+- M6 (visual receipt): specified in `docs/VISUAL_RECEIPT.md` and being built ahead of M4/M5, in stages named "Visual Receipt — Spec / SVG / PNG / Packaging" (descriptive stage names, not milestone numbers; never renumber the official roadmap). Spec and SVG stages are done: `src/render/visual/spec.ts` (design tokens), `src/render/visual/layout.ts` (Receipt → VisualDoc), `src/render/svg.ts` (VisualDoc → SVG), `src/assets.ts` (loads the bundled fonts in `assets/fonts/`). PNG and `export` are not built.
 - M4 (v0.1 release), M5 (periods), M7+ (lore, Wrapped): not started. Don't build anything beyond the current task.
 - The visual renderer is a pure consumer of the Receipt, exactly like the terminal renderer: no filesystem, git, archive, transcript or environment access, no new analytics, and the same provenance marks and copy from `src/render/format.ts`.
 
@@ -41,7 +41,7 @@ Node ≥ 24 runs the TypeScript sources directly (no build step). Dev-only depen
 ## Architectural boundaries (do not cross)
 
 ```
-source/claude-code  →  Session  →  analytics  →  Receipt  →  render/tty | render/json | (future) render/svg
+source/claude-code  →  Session  →  analytics  →  Receipt  →  render/tty | render/json | render/visual → render/svg
                                         ↓
                                  archive (metrics only)  →  aggregate  →  (future) week / month / wrapped
 ```

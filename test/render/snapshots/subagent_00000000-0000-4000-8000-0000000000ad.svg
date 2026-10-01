@@ -1,0 +1,136 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="624" height="1594" viewBox="0 0 624 1594" xml:space="preserve">
+<defs><style>text{font-family:"IBM Plex Mono",monospace;white-space:pre}</style>
+<filter id="paper-shadow" x="-5%" y="-2%" width="110%" height="104%"><feDropShadow dx="0" dy="2" stdDeviation="3" flood-color="#1C1C1A" flood-opacity="0.18"/></filter></defs>
+<rect width="624" height="1594" fill="#E8E5DE"/>
+<path d="M24 24L36 30L48 24L60 30L72 24L84 30L96 24L108 30L120 24L132 30L144 24L156 30L168 24L180 30L192 24L204 30L216 24L228 30L240 24L252 30L264 24L276 30L288 24L300 30L312 24L324 30L336 24L348 30L360 24L372 30L384 24L396 30L408 24L420 30L432 24L444 30L456 24L468 30L480 24L492 30L504 24L516 30L528 24L540 30L552 24L564 30L576 24L588 30L600 24L600 1570L588 1564L576 1570L564 1564L552 1570L540 1564L528 1570L516 1564L504 1570L492 1564L480 1570L468 1564L456 1570L444 1564L432 1570L420 1564L408 1570L396 1564L384 1570L372 1564L360 1570L348 1564L336 1570L324 1564L312 1570L300 1564L288 1570L276 1564L264 1570L252 1564L240 1570L228 1564L216 1570L204 1564L192 1570L180 1564L168 1570L156 1564L144 1570L132 1564L120 1570L108 1564L96 1570L84 1564L72 1570L60 1564L48 1570L36 1564L24 1570Z" fill="#FAF8F2" filter="url(#paper-shadow)"/>
+<text x="312" y="107" font-size="40" font-weight="700" fill="#1C1C1A" text-anchor="middle" letter-spacing="6">CLAUDE RECEIPT</text>
+<text x="312" y="135.63" font-size="15" fill="#6B6A64" text-anchor="middle">itemized session record</text>
+<line x1="60" y1="145.75" x2="564" y2="145.75" stroke="#1C1C1A" stroke-width="1.5"/><line x1="60" y1="150.25" x2="564" y2="150.25" stroke="#1C1C1A" stroke-width="1.5"/>
+<text x="60" y="177.5" font-size="20" fill="#1C1C1A">SESSION</text>
+<line x1="156" y1="177.5" x2="432" y2="177.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="177.5" font-size="20" fill="#1C1C1A" text-anchor="end">00000000</text>
+<text x="60" y="205.5" font-size="20" fill="#1C1C1A">PROJECT</text>
+<line x1="156" y1="205.5" x2="444" y2="205.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="205.5" font-size="20" fill="#1C1C1A" text-anchor="end">project</text>
+<text x="60" y="233.5" font-size="20" fill="#1C1C1A">STARTED</text>
+<line x1="156" y1="233.5" x2="336" y2="233.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="233.5" font-size="20" fill="#1C1C1A" text-anchor="end">2026-09-28 09:56</text>
+<text x="60" y="261.5" font-size="20" fill="#1C1C1A">ENDED</text>
+<line x1="132" y1="261.5" x2="336" y2="261.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="261.5" font-size="20" fill="#1C1C1A" text-anchor="end">2026-09-28 09:56</text>
+<text x="60" y="289.5" font-size="20" fill="#1C1C1A">ENTRY</text>
+<line x1="132" y1="289.5" x2="432" y2="289.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="289.5" font-size="20" fill="#1C1C1A" text-anchor="end">HEADLESS</text>
+<text x="60" y="317.5" font-size="20" fill="#1C1C1A">STATUS</text>
+<line x1="144" y1="317.5" x2="432" y2="317.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="317.5" font-size="20" fill="#1C1C1A" text-anchor="end">COMPLETE</text>
+<text x="60" y="369.5" font-size="20" font-weight="700" fill="#1C1C1A">HARD STATS</text>
+<line x1="192" y1="362" x2="564" y2="362" stroke="#1C1C1A" stroke-width="1" stroke-dasharray="4 4"/>
+<text x="60" y="397.5" font-size="20" fill="#1C1C1A">DURATION</text>
+<line x1="168" y1="397.5" x2="492" y2="397.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="397.5" font-size="20" font-weight="700" fill="#1C1C1A" text-anchor="end">13s</text>
+<text x="552" y="397.5" font-size="20" font-weight="700" fill="#1C1C1A">*</text>
+<text x="60" y="425.5" font-size="20" fill="#1C1C1A">ACTIVE TIME (EST.)</text>
+<line x1="288" y1="425.5" x2="480" y2="425.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="425.5" font-size="20" fill="#1C1C1A" text-anchor="end">~13s</text>
+<text x="60" y="453.5" font-size="20" fill="#1C1C1A">CLAUDE CODE OPEN</text>
+<line x1="264" y1="453.5" x2="492" y2="453.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="453.5" font-size="20" fill="#1C1C1A" text-anchor="end">14s</text>
+<text x="60" y="481.5" font-size="20" fill="#1C1C1A">RUNS</text>
+<line x1="120" y1="481.5" x2="516" y2="481.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="481.5" font-size="20" fill="#1C1C1A" text-anchor="end">1</text>
+<text x="552" y="481.5" font-size="20" fill="#1C1C1A">*</text>
+<text x="60" y="509.5" font-size="20" fill="#1C1C1A">CLAUDE WORKING</text>
+<line x1="240" y1="509.5" x2="492" y2="509.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="509.5" font-size="20" fill="#1C1C1A" text-anchor="end">14s</text>
+<text x="60" y="537.5" font-size="20" fill="#1C1C1A">MODELS</text>
+<text x="84" y="565.5" font-size="20" fill="#1C1C1A">haiku-4-5</text>
+<text x="60" y="593.5" font-size="20" fill="#1C1C1A">TOKENS IN</text>
+<line x1="180" y1="593.5" x2="504" y2="593.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="593.5" font-size="20" font-weight="700" fill="#1C1C1A" text-anchor="end">46</text>
+<text x="60" y="621.5" font-size="20" fill="#1C1C1A">TOKENS OUT</text>
+<line x1="192" y1="621.5" x2="468" y2="621.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="621.5" font-size="20" font-weight="700" fill="#1C1C1A" text-anchor="end">1,080</text>
+<text x="60" y="649.5" font-size="20" fill="#1C1C1A">CACHE READ</text>
+<line x1="192" y1="649.5" x2="456" y2="649.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="649.5" font-size="20" fill="#1C1C1A" text-anchor="end">98,992</text>
+<text x="60" y="677.5" font-size="20" fill="#1C1C1A">CACHE WRITE</text>
+<line x1="204" y1="677.5" x2="456" y2="677.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="677.5" font-size="20" fill="#1C1C1A" text-anchor="end">32,400</text>
+<line x1="372" y1="689.75" x2="564" y2="689.75" stroke="#1C1C1A" stroke-width="1.5"/><line x1="372" y1="694.25" x2="564" y2="694.25" stroke="#1C1C1A" stroke-width="1.5"/>
+<text x="60" y="719.5" font-size="20" fill="#1C1C1A">API EQUIVALENT</text>
+<line x1="240" y1="719.5" x2="468" y2="719.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="719.5" font-size="20" font-weight="700" fill="#1C1C1A" text-anchor="end">$0.06</text>
+<text x="60" y="747.5" font-size="20" fill="#1C1C1A">PROMPTS</text>
+<line x1="156" y1="747.5" x2="516" y2="747.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="747.5" font-size="20" fill="#1C1C1A" text-anchor="end">1</text>
+<text x="60" y="775.5" font-size="20" fill="#1C1C1A">TOOL CALLS</text>
+<line x1="192" y1="775.5" x2="516" y2="775.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="775.5" font-size="20" fill="#1C1C1A" text-anchor="end">2</text>
+<text x="60" y="803.5" font-size="20" fill="#1C1C1A">TOP TOOLS</text>
+<text x="84" y="831.5" font-size="20" fill="#1C1C1A">Agent</text>
+<line x1="156" y1="831.5" x2="516" y2="831.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="831.5" font-size="20" fill="#1C1C1A" text-anchor="end">1</text>
+<text x="84" y="859.5" font-size="20" fill="#1C1C1A">Read</text>
+<line x1="144" y1="859.5" x2="516" y2="859.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="859.5" font-size="20" fill="#1C1C1A" text-anchor="end">1</text>
+<text x="60" y="911.5" font-size="20" font-weight="700" fill="#1C1C1A">CODING STATS</text>
+<line x1="216" y1="904" x2="564" y2="904" stroke="#1C1C1A" stroke-width="1" stroke-dasharray="4 4"/>
+<text x="60" y="939.5" font-size="20" fill="#1C1C1A">FILES READ</text>
+<line x1="192" y1="939.5" x2="516" y2="939.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="939.5" font-size="20" fill="#1C1C1A" text-anchor="end">1</text>
+<text x="552" y="939.5" font-size="20" fill="#1C1C1A">*</text>
+<text x="60" y="967.5" font-size="20" fill="#1C1C1A">FILES CREATED</text>
+<line x1="228" y1="967.5" x2="516" y2="967.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="967.5" font-size="20" fill="#1C1C1A" text-anchor="end">0</text>
+<text x="552" y="967.5" font-size="20" fill="#1C1C1A">*</text>
+<text x="60" y="995.5" font-size="20" fill="#1C1C1A">FILES EDITED</text>
+<line x1="216" y1="995.5" x2="516" y2="995.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="995.5" font-size="20" fill="#1C1C1A" text-anchor="end">0</text>
+<text x="552" y="995.5" font-size="20" fill="#1C1C1A">*</text>
+<text x="60" y="1023.5" font-size="20" fill="#1C1C1A">LINES ADDED</text>
+<line x1="204" y1="1023.5" x2="504" y2="1023.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="1023.5" font-size="20" font-weight="700" fill="#1C1C1A" text-anchor="end">+0</text>
+<text x="552" y="1023.5" font-size="20" font-weight="700" fill="#1C1C1A">*</text>
+<text x="60" y="1051.5" font-size="20" fill="#1C1C1A">LINES REMOVED</text>
+<line x1="228" y1="1051.5" x2="504" y2="1051.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="1051.5" font-size="20" font-weight="700" fill="#1C1C1A" text-anchor="end">-0</text>
+<text x="552" y="1051.5" font-size="20" font-weight="700" fill="#1C1C1A">*</text>
+<text x="60" y="1079.5" font-size="20" fill="#1C1C1A">SHELL COMMANDS</text>
+<line x1="240" y1="1079.5" x2="516" y2="1079.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="1079.5" font-size="20" fill="#1C1C1A" text-anchor="end">0</text>
+<text x="60" y="1107.5" font-size="20" fill="#1C1C1A">TEST RUNS DETECTED</text>
+<line x1="288" y1="1107.5" x2="504" y2="1107.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="1107.5" font-size="20" fill="#1C1C1A" text-anchor="end">~0</text>
+<text x="60" y="1135.5" font-size="20" fill="#1C1C1A">TOOL ERRORS</text>
+<line x1="204" y1="1135.5" x2="516" y2="1135.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="1135.5" font-size="20" fill="#1C1C1A" text-anchor="end">0</text>
+<text x="60" y="1163.5" font-size="20" fill="#1C1C1A">INTERRUPTED TOOL RUNS</text>
+<line x1="324" y1="1163.5" x2="516" y2="1163.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="1163.5" font-size="20" fill="#1C1C1A" text-anchor="end">0</text>
+<text x="60" y="1191.5" font-size="20" fill="#1C1C1A">CLAUDE COMMITS DETECTED</text>
+<line x1="348" y1="1191.5" x2="504" y2="1191.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="1191.5" font-size="20" fill="#1C1C1A" text-anchor="end">~0</text>
+<text x="60" y="1243.5" font-size="20" font-weight="700" fill="#1C1C1A">SESSION LORE</text>
+<line x1="216" y1="1236" x2="564" y2="1236" stroke="#1C1C1A" stroke-width="1" stroke-dasharray="4 4"/>
+<text x="60" y="1271.5" font-size="20" fill="#1C1C1A">BIGGEST RABBIT HOLE</text>
+<line x1="300" y1="1271.5" x2="372" y2="1271.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="1271.5" font-size="20" fill="#1C1C1A" text-anchor="end">2 calls in 7s</text>
+<text x="552" y="1271.5" font-size="20" fill="#1C1C1A">*</text>
+<text x="60" y="1299.5" font-size="20" fill="#1C1C1A">LONGEST ERROR STREAK</text>
+<line x1="312" y1="1299.5" x2="516" y2="1299.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="1299.5" font-size="20" fill="#1C1C1A" text-anchor="end">0</text>
+<text x="552" y="1299.5" font-size="20" fill="#1C1C1A">*</text>
+<text x="60" y="1327.5" font-size="20" fill="#1C1C1A">CACHE HIT RATE</text>
+<line x1="240" y1="1327.5" x2="492" y2="1327.5" stroke="#6B6A64" stroke-width="2" stroke-linecap="round" stroke-dasharray="0 6"/>
+<text x="540" y="1327.5" font-size="20" fill="#1C1C1A" text-anchor="end">75%</text>
+<text x="552" y="1327.5" font-size="20" fill="#1C1C1A">*</text>
+<line x1="60" y1="1355.75" x2="564" y2="1355.75" stroke="#1C1C1A" stroke-width="1.5"/><line x1="60" y1="1360.25" x2="564" y2="1360.25" stroke="#1C1C1A" stroke-width="1.5"/>
+<text x="60" y="1381.63" font-size="15" fill="#6B6A64">9 metrics unavailable, not shown</text>
+<text x="60" y="1401.63" font-size="15" fill="#6B6A64">plain    recorded directly</text>
+<text x="60" y="1421.63" font-size="15" fill="#6B6A64">  *      computed from data</text>
+<text x="60" y="1441.63" font-size="15" fill="#6B6A64">  ~      heuristic estimate</text>
+<text x="60" y="1461.63" font-size="15" fill="#6B6A64">API EQUIVALENT = these tokens at API list prices</text>
+<text x="60" y="1481.63" font-size="15" fill="#6B6A64">times: UTC</text>
+<text x="312" y="1523.5" font-size="20" fill="#1C1C1A" text-anchor="middle" letter-spacing="1">KEEP FOR YOUR RECORDS</text>
+</svg>

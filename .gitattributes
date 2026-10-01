@@ -1,2 +1,7 @@
 # Fixtures are byte-exact (truncated tails, missing final newlines): never convert line endings.
 fixtures/** -text
+# Bundled fonts are byte-exact and unmodified (OFL-1.1, Reserved Font Name "Plex").
+*.ttf binary
+assets/fonts/*.txt -text -whitespace
+# Golden snapshots are compared byte-for-byte: never convert line endings.
+test/render/snapshots/** -text

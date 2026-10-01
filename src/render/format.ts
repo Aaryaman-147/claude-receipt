@@ -1,7 +1,9 @@
-// Presentation vocabulary shared by renderers (docs/ARCHITECTURE.md §2 `format`): labels keyed by
-// metric id, value formatting, microcopy. Nothing here computes a metric. Heuristic metrics get
-// labels that say what they are ("DETECTED", "EST.") so wording never upgrades them to facts.
-import type { MetricId, Provenance } from "../receipt/types.ts";
+// Presentation vocabulary shared by every renderer (docs/ARCHITECTURE.md §2 `format`): labels keyed
+// by metric id, value formatting, identity rows, provenance marks, copy and display width. The
+// terminal and the visual receipt both take their words and numbers from here, so they always say
+// the same thing. Nothing here computes a metric. Heuristic metrics get labels that say what they
+// are ("DETECTED", "EST.") so wording never upgrades them to facts.
+import type { Metric, MetricId, Provenance, Receipt } from "../receipt/types.ts";
 
 export const LABELS: Record<MetricId, string> = {
   "session.duration.wall": "DURATION",
@@ -47,6 +49,7 @@ export const SECTION_TITLES = { hard: "HARD STATS", coding: "CODING STATS", lore
 
 // The only marks, and what they mean (docs/METRICS.md → Rendering rule).
 export const MARK = { derived: " *", heuristicPrefix: "~" } as const;
+export const markFor = (p: Provenance): "" | "*" | "~" => (p === "derived" ? "*" : p === "heuristic" ? "~" : "");
 // Each legend line fits the narrowest receipt (28 columns).
 export const LEGEND: Record<Provenance, string> = {
   exact: "plain    recorded directly",
@@ -54,9 +57,17 @@ export const LEGEND: Record<Provenance, string> = {
   heuristic: "  ~      heuristic estimate",
 };
 
-// Footer microcopy: playful, makes no claims about the session. Must not use `~` or `*`.
+// Copy. Playful, makes no claims about the session. Footers must not use `~` or `*`.
+export const TITLE = "CLAUDE RECEIPT";
+export const SUBTITLE = "itemized session record";
+export const LIVE_TERMINAL = "[ LIVE SESSION: STILL RUNNING ]";
+export const LIVE_BAND = "LIVE · STILL RUNNING";
 export const FOOTERS = ["THANK YOU FOR SHIPPING", "NO REFUNDS ON TOKENS", "KEEP FOR YOUR RECORDS", "PRINTED LOCALLY. NOTHING UPLOADED."];
 export const COST_NOTE = "API EQUIVALENT = these tokens at API list prices";
+export const unavailableText = (n: number) => `${n} metric${n === 1 ? "" : "s"} unavailable, not shown`;
+export const timesText = (timeZone: string) => `times: ${timeZone}`;
+// Deterministic per session.
+export const footerFor = (sessionId: string) => FOOTERS[[...sessionId].reduce((h, c) => (h * 31 + c.charCodeAt(0)) >>> 0, 7) % FOOTERS.length]!;
 
 export const int = (n: number) => String(Math.round(n)).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
 
@@ -69,7 +80,12 @@ export function duration(ms: number): string {
   return `${s}s`;
 }
 
-export const usd = (n: number) => (n === 0 ? "$0.00" : n < 0.01 ? "<$0.01" : `$${n.toFixed(2)}`);
+export function usd(n: number): string {
+  if (n === 0) return "$0.00";
+  if (n < 0.01) return "<$0.01";
+  const [whole, cents] = n.toFixed(2).split(".");
+  return `$${whole!.replace(/\B(?=(\d{3})+(?!\d))/g, ",")}.${cents}`;
+}
 export const pct = (r: number) => `${Math.round(r * 100)}%`;
 export const ratio = (r: number) => (Number.isInteger(r) ? String(r) : r.toFixed(1));
 export const hour = (h: number) => `${String(h).padStart(2, "0")}:00`;
@@ -85,7 +101,7 @@ export function localTime(iso: string, timeZone: string): string {
   return `${p.year}-${p.month}-${p.day} ${p.hour}:${p.minute}`;
 }
 
-// Terminal display width: wide East Asian and emoji code points take 2 columns, combining marks 0.
+// Display width in grid columns: wide East Asian and emoji code points take 2, combining marks 0.
 export function displayWidth(s: string): number {
   let w = 0;
   for (const ch of s) {
@@ -97,10 +113,74 @@ export function displayWidth(s: string): number {
   return w;
 }
 
-// Cut to at most `max` columns, marking the cut with "..".
-export function fit(s: string, max: number): string {
+// Cut to at most `max` columns, marking the cut (the terminal uses "..", the image "…").
+export function fit(s: string, max: number, ellipsis = ".."): string {
   if (displayWidth(s) <= max) return s;
   let out = "";
-  for (const ch of s) { if (displayWidth(out + ch) > max - 2) break; out += ch; }
-  return `${out}..`;
+  for (const ch of s) { if (displayWidth(out + ch) > max - displayWidth(ellipsis)) break; out += ch; }
+  return `${out}${ellipsis}`;
+}
+
+// Word-wrap to `width` columns; a word longer than a line is cut with `ellipsis`.
+export function wrapWords(text: string, width: number, ellipsis = ".."): string[] {
+  const lines: string[] = [];
+  let cur = "";
+  for (const word of text.split(/\s+/).filter(Boolean)) {
+    const next = cur ? `${cur} ${word}` : word;
+    if (displayWidth(next) <= width) cur = next;
+    else { if (cur) lines.push(cur); cur = fit(word, width, ellipsis); }
+  }
+  if (cur) lines.push(cur);
+  return lines;
+}
+
+// A metric is shown when it has a value and isn't an empty list or map.
+export const isShown = (m: Metric) =>
+  m.value !== null && (!Array.isArray(m.value) || m.value.length > 0) && !(m.id === "toolCalls.byName" && Object.keys(m.value as object).length === 0);
+
+export interface Row { label: string; value: string }
+const top = <T>(xs: T[], n = 3) => xs.slice(0, n);
+
+// One or more {label, value} rows per shown metric. A list metric is a heading plus indented rows.
+export function metricRows(m: Metric): { heading?: string; rows: Row[] } {
+  const label = LABELS[m.id];
+  const one = (value: string): { rows: Row[] } => ({ rows: [{ label, value }] });
+  switch (m.id) {
+    case "session.duration.wall": case "session.duration.active": case "session.duration.open": case "api.duration": case "lore.longestTurn":
+      return one(duration(m.value!));
+    case "cost.apiEquivalent": return one(usd(m.value!));
+    case "lines.added": return one(`+${int(m.value!)}`);
+    case "lines.removed": return one(`-${int(m.value!)}`);
+    case "lore.cacheHitRate": return one(pct(m.value!));
+    case "lore.readEditRatio": return one(ratio(m.value!));
+    case "lore.peakHour": return one(hour(m.value!));
+    case "files.mostEdited": return one(m.value!.startsWith("*") ? m.value! : basename(m.value!));
+    case "git.lines": return one(`+${int(m.value!.added)} / -${int(m.value!.removed)}`);
+    case "lore.rabbitHole": {
+      const v = m.value!;
+      return one(`${v.toolCalls} call${v.toolCalls === 1 ? "" : "s"}${v.durationMs === null ? "" : ` in ${duration(v.durationMs)}`}`);
+    }
+    case "models.used": return { heading: label, rows: top(m.value!, 5).map((id) => ({ label: `  ${model(id)}`, value: "" })) };
+    case "toolCalls.byName":
+      return { heading: label, rows: top(Object.entries(m.value!).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))).map(([name, n]) => ({ label: `  ${name}`, value: int(n) })) };
+    case "languages": return { heading: label, rows: top(m.value!).map((l) => ({ label: `  ${l.language}`, value: `${int(l.lines)} lines` })) };
+    case "commands.topPrograms": return { heading: label, rows: top(m.value!).map((p) => ({ label: `  ${p.program}`, value: int(p.count) })) };
+    default: return one(int(m.value as number));
+  }
+}
+
+const ENTRY: Record<string, string> = { cli: "CLI", "sdk-cli": "HEADLESS", "claude-desktop": "DESKTOP" };
+
+// The identity block, in order, skipping fields the Receipt doesn't have (or that redaction removed).
+export function identityRows(s: Receipt["session"], timeZone: string): Row[] {
+  const rows: [string, string | null][] = [
+    ["SESSION", s.id.slice(0, 8)],
+    ["PROJECT", s.project],
+    ["STARTED", s.startedAt && localTime(s.startedAt, timeZone)],
+    ["ENDED", s.endedAt && localTime(s.endedAt, timeZone)],
+    ["ENTRY", s.entrypoint && (ENTRY[s.entrypoint] ?? s.entrypoint.toUpperCase())],
+    ["STATUS", s.live ? "LIVE" : s.complete ? "COMPLETE" : "INCOMPLETE"],
+    ["FORK OF", s.forkOf && s.forkOf.slice(0, 8)],
+  ];
+  return rows.filter((r): r is [string, string] => !!r[1]).map(([label, value]) => ({ label, value }));
 }

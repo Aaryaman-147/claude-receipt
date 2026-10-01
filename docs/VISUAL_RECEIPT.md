@@ -7,7 +7,7 @@ The work is delivered in four implementation stages, named descriptively so they
 | Stage | Contents | Status |
 |---|---|---|
 | **Visual Receipt — Spec** | This document | Done |
-| **Visual Receipt — SVG** | Layout model, SVG renderer, bundled font, tests | Not started |
+| **Visual Receipt — SVG** | Layout model, SVG renderer, bundled font, tests | Done |
 | **Visual Receipt — PNG** | PNG from the SVG, `claude-receipt export` | Not started |
 | **Visual Receipt — Packaging** | Shipping the visual pieces (font files, WASM) in the npm package; optional polish | Not started |
 
@@ -54,7 +54,7 @@ Receipt ──(redactReceipt, unless --no-redact)──► layoutReceipt() ─�
 - No fallback font is bundled.
 - **Licences:** Claude Receipt itself will be MIT-licensed (a `LICENSE` file is added before packaging, official M4). Third-party licences stay with their components and ship with them: IBM Plex Mono under OFL-1.1, `@resvg/resvg-wasm` under MPL-2.0.
 
-**Glyph coverage (MVP).** The image supports exactly the glyphs present in the bundled IBM Plex Mono files. The SVG stage lists that coverage from the font files rather than assuming it. CJK and other scripts outside it are **not** covered:
+**Glyph coverage (MVP).** The image supports exactly the glyphs present in the bundled IBM Plex Mono files. Coverage read from the bundled files (`IBMPlexMono-Regular.ttf` and `-Bold.ttf` from IBM's `@ibm/plex-mono@2.5.0` release; 1,049 code points each): Basic Latin, Latin-1 Supplement, Latin Extended-A and Box Drawing in full; Cyrillic 192 of 256; General Punctuation 41 of 112 (including `…` and `·`); Latin Extended-B 33 of 208; Greek effectively none; no CJK, Hangul, Kana, Arabic, Hebrew, Devanagari or emoji. CJK and other scripts outside it are **not** covered:
 - In the **PNG**, an unsupported character renders as the font's missing-glyph box.
 - In the **SVG**, a browser may substitute a system font, so appearance depends on the viewer.
 - In both, the **layout cannot break**. Widths come from the shared display-width rule (wide East Asian and emoji characters take 2 columns, combining marks 0), and runs containing user-supplied strings are pinned to their computed width (`textLength`).
@@ -67,7 +67,7 @@ The receipt is a character grid, like the terminal receipt.
 | Token | Value |
 |---|---|
 | Paper padding | 36 px left and right → 504 px text area |
-| Body text | 20 px; at IBM Plex Mono's advance (0.6 em, to be confirmed from the font file) one column = 12 px → **42 columns** |
+| Body text | 20 px; at IBM Plex Mono's advance (600/1000 em for every glyph, confirmed from the font files and pinned by a test) one column = 12 px → **42 columns** |
 | Small text | 15 px (9 px columns), secondary ink |
 | Title | 40 px Bold, letter-spaced |
 | Section heading | 20 px Bold, uppercase |
@@ -161,7 +161,7 @@ src/cli/export.ts            `claude-receipt export [last | <prefix>] [--svg | -
 assets/fonts/                IBM Plex Mono Regular and Bold (unmodified) + OFL-1.1 license (SVG stage)
 ```
 
-`VisualDoc = { width, height, items }`. Each item is one of: text run, rule, leader, band or edge. Text runs carry size, weight, ink, position and alignment; metric rows also carry the metric id and provenance. Font bytes are loaded by `cli/export.ts` and passed in; the layout needs only the font metrics in `spec.ts`.
+`VisualDoc = { width, height, backdrop, paper, items }`. Each item is one of: text run, rule, leader or band. The torn edges are part of `paper.outline`, one closed sawtooth path, so the paper fill and its shadow follow the tear. Text runs carry size, weight, ink, position and alignment; metric rows also carry the metric id and provenance. Font bytes are loaded by `cli/export.ts` and passed in; the layout needs only the font metrics in `spec.ts`.
 
 ## 12. Test plan (SVG and PNG stages)
 
@@ -194,7 +194,8 @@ assets/fonts/                IBM Plex Mono Regular and Bold (unmodified) + OFL-1
 
 ## 14. Items to verify at the start of the SVG and PNG stages
 
-- IBM Plex Mono's advance width (expected 600/1000 em) and vertical metrics, read from the font files.
+- ~~IBM Plex Mono's advance width and vertical metrics~~ Verified in the SVG stage: unitsPerEm 1000, advance 600 for every glyph, ascender 1025, descender −275 (both weights).
 - That resvg honours `textLength`/`lengthAdjust` on `<text>`. If not, the SVG stage pins user-string runs another way, still without overflow.
 - That resvg's PNG output is byte-identical across runs and platforms, and contains no text metadata chunks.
-- The exact glyph coverage of the bundled files, to document it in the README.
+- ~~The exact glyph coverage of the bundled files~~ Verified in the SVG stage and listed in §4; it goes into the README with the PNG/export stage, when users can produce images.
+- In browsers, pinned runs (`textLength` with `lengthAdjust="spacingAndGlyphs"`) keep CJK and emoji fallback glyphs inside their grid width (checked in Chrome during the SVG stage).
