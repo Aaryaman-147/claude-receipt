@@ -57,9 +57,9 @@ As built (M3): 40 columns (down to 28 on narrow terminals), ASCII only apart fro
 
 ### 5.2 JSON output (MVP)
 
-`--json` prints the Receipt model as JSON: a stable, versioned contract for scripts and the future visual renderer.
+`--json` prints the Receipt model as JSON: a stable, versioned contract for scripts. The visual renderer consumes the same Receipt model.
 
-### 5.3 Visual receipt (future, first-class)
+### 5.3 Visual receipt (first-class; built as M6, shipped in v0.1)
 
 A generated SVG/PNG receipt image:
 
@@ -90,7 +90,7 @@ Specified in `docs/VISUAL_RECEIPT.md`:
 | `claude-receipt list` | Recent sessions (default 20, `--limit N`): start time, short id, project, duration, state; sessions whose transcript is gone come from the archive | MVP (M3) |
 | `claude-receipt --project` | Aggregate receipt for the current project | Future (M5) |
 | `claude-receipt --week` / `--month` | Aggregate receipt for a period | Future (M5) |
-| `claude-receipt export` | SVG/PNG receipt, redacted by default (`--no-redact` to opt out) | Future (M6) |
+| `claude-receipt export` | SVG/PNG receipt, redacted by default (`--no-redact` to opt out) | v0.1 (M6, built ahead of M5) |
 | `claude-receipt wrapped [year]` | Yearly Claude Wrapped | Future (M8) |
 
 Every run archives newly seen or changed sessions as a side effect, so history accumulates from the first use (see `ARCHITECTURE.md` §6). `--no-archive` makes a run read-only; `--redact` applies the export redaction rules (`PRIVACY.md` §6). Exit codes: 0 success, 1 nothing to show (no sessions, no match, ambiguous prefix), 2 usage error.
@@ -105,10 +105,10 @@ Every run archives newly seen or changed sessions as a side effect, so history a
 - Git enrichment when the session `cwd` is a git repository: commits in the session window, `Co-Authored-By: Claude` attribution.
 - Local metrics archive with a versioned schema, written on every run.
 - Anonymized fixture test suite.
+- SVG/PNG export (`claude-receipt export`) and the visual design system: originally postponed, built ahead of schedule as M6 (`VISUAL_RECEIPT.md`).
 
 **Out (postponed):**
 
-- SVG/PNG export and the visual design system.
 - `--project`, `--week`, `--month`, `wrapped`.
 - Any feature that reads prompt or response text (recurring phrases, text-based personality).
 - `--run` (receipt for only the latest run of a resumed session). The data is preserved; the option isn't built.

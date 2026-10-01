@@ -52,7 +52,7 @@ Receipt ──(redactReceipt, unless --no-redact)──► layoutReceipt() ─�
 - **IBM Plex Mono**, **Regular** and **Bold**, bundled as **unmodified** font files with their **OFL-1.1** license file. No subsetting or other modification. Added in the SVG stage under `assets/fonts/`.
 - The SVG embeds the same unmodified files (as `@font-face` data URIs) so browsers show the intended typeface; the PNG stage hands the same bytes to resvg.
 - No fallback font is bundled.
-- **Licences:** Claude Receipt itself will be MIT-licensed (a `LICENSE` file is added before packaging, official M4). Third-party licences stay with their components and ship with them: IBM Plex Mono under OFL-1.1, `@resvg/resvg-wasm` under MPL-2.0.
+- **Licences:** Claude Receipt itself is MIT-licensed (`LICENSE`, added with packaging in M4). Third-party licences stay with their components and ship with them: IBM Plex Mono under OFL-1.1, `@resvg/resvg-wasm` under MPL-2.0.
 
 **Glyph coverage (MVP).** The image supports exactly the glyphs present in the bundled IBM Plex Mono files. Coverage read from the bundled files (`IBMPlexMono-Regular.ttf` and `-Bold.ttf` from IBM's `@ibm/plex-mono@2.5.0` release; 1,049 code points each): Basic Latin, Latin-1 Supplement, Latin Extended-A and Box Drawing in full; Cyrillic 192 of 256; General Punctuation 41 of 112 (including `…` and `·`); Latin Extended-B 33 of 208; Greek effectively none; no CJK, Hangul, Kana, Arabic, Hebrew, Devanagari or emoji. CJK and other scripts outside it are **not** covered:
 - In the **PNG**, an unsupported character renders as the font's missing-glyph box (verified: CJK, Hangul, Greek, Hebrew, Arabic, Devanagari, emoji and symbols such as `★` all draw the same box, pinned to their grid width). resvg-wasm cannot load system fonts, and it ignores the SVG's `@font-face` data: the PNG stage passes the bundled font bytes to it directly, so with no fonts passed it draws no text at all.
@@ -146,22 +146,21 @@ Copy is short, observational and non-evaluative. It makes no claims about produc
 | Every metric available / almost none | Same receipt structure; height adapts |
 | Redacted | Same layout with redacted values |
 
-## 11. Architecture and files (planned)
+## 11. Architecture and files
 
 ```
-src/render/format.ts         shared: labels, copy, value formatting, marks, display width
-                             (the per-metric value formatting moves here from tty.ts in the SVG stage;
-                             terminal snapshots must stay byte-identical)
+src/render/format.ts         shared with the terminal: labels, copy, value formatting, marks, display width
 src/render/visual/spec.ts    the design system above, as one constant object
 src/render/visual/layout.ts  Receipt → VisualDoc (pure; pixel geometry from the grid)
 src/render/svg.ts            VisualDoc + font bytes → SVG string (pure)
 src/render/png.ts            SVG + font bytes → PNG bytes via @resvg/resvg-wasm   (PNG stage)
-src/cli/export.ts            `claude-receipt export [last | <prefix>] [--svg | --png] [-o file] [--no-redact]`:
-                             select the session, redact, load fonts, write the file   (PNG stage)
+src/cli/run.ts               `export` arguments, session selection (shared with the receipt command), redaction
+src/cli/export.ts            redacted-or-not Receipt → SVG/PNG → a new file (never overwrites)   (PNG stage)
+src/assets.ts                loads the bundled font bytes relative to the installed module
 assets/fonts/                IBM Plex Mono Regular and Bold (unmodified) + OFL-1.1 license (SVG stage)
 ```
 
-`VisualDoc = { width, height, backdrop, paper, items }`. Each item is one of: text run, rule, leader or band. The torn edges are part of `paper.outline`, one closed sawtooth path, so the paper fill and its shadow follow the tear. Text runs carry size, weight, ink, position and alignment; metric rows also carry the metric id and provenance. Font bytes are loaded by `cli/export.ts` and passed in; the layout needs only the font metrics in `spec.ts`.
+`VisualDoc = { width, height, backdrop, paper, items }`. Each item is one of: text run, rule, leader or band. The torn edges are part of `paper.outline`, one closed sawtooth path, so the paper fill and its shadow follow the tear. Text runs carry size, weight, ink, position and alignment; metric rows also carry the metric id and provenance. Font bytes are loaded by `cli/export.ts` (through `src/assets.ts`) and passed in; the layout needs only the font metrics in `spec.ts`.
 
 ## Export (implemented in the PNG stage)
 

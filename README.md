@@ -74,7 +74,7 @@ claude-receipt export             # a shareable PNG of the receipt (redacted)
 
 **Reading a receipt.** Plain values were recorded by Claude Code, values ending in `*` were computed from recorded data, and values starting with `~` are heuristic estimates (their labels say so too, such as `ACTIVE TIME (EST.)`). Metrics that can't be determined are left out and counted (`N metrics unavailable, not shown`), never shown as zero. **API EQUIVALENT** is what the session's tokens would cost at Anthropic's API list prices: Claude Code's own recorded cost when it has one, otherwise computed from a price table that ships with the package. It is an equivalent, not a charge or a bill.
 
-**The archive.** Every run first sweeps Claude Code's local sessions and saves each finished one to `~/.claude-receipt/archive/` as metrics only (no prompts, responses, code or commands), so receipts survive Claude Code's transcript cleanup. Live sessions are not archived. `--no-archive` makes a run read-only.
+**The archive.** Every run first sweeps Claude Code's local sessions and saves each finished one to `~/.claude-receipt/archive/`: the computed metrics plus the session header (session id, project name and directory, times, Claude Code version) and the most-edited file path, but no prompts, responses, code, tool output, commands or session titles. Receipts survive Claude Code's transcript cleanup. Live sessions are not archived. `--no-archive` makes a run read-only.
 
 ### Shareable image
 
@@ -106,10 +106,18 @@ claude-receipt export --no-redact              # keep project, title and file na
 
 - Everything runs on your machine. Claude Receipt makes **no network requests** and has no account, telemetry or upload of any kind.
 - It reads Claude Code's session files under `~/.claude/` (`projects/`, plus `sessions/` to tell which sessions are still running) read-only. It never reads credentials and never modifies Claude Code's files.
-- Default metrics come from metadata (timestamps, token counts, tool names, file paths), not from what you or Claude wrote. The archive stores computed metrics only.
+- Default metrics come from metadata (timestamps, token counts, tool names, file paths), not from what you or Claude wrote. The archive holds those metrics and the session header described above, never conversation text.
 - The terminal receipt shows project and file names because it stays on your screen; `export` (and `--redact`) hide them. Treat `--no-redact` exports and `--json` output as private.
 
 Details: [docs/PRIVACY.md](docs/PRIVACY.md).
+
+## Limitations
+
+- It reads Claude Code's local session files, whose format is undocumented. It is tested against fixtures from Claude Code 2.1.283 and tolerates unknown records, but a format change can make metrics unavailable until it is updated.
+- Receipts exist only for sessions still on disk or already archived. Sessions that Claude Code cleaned up before Claude Receipt first ran cannot be recovered.
+- Heuristic metrics (marked `~`, such as active time, detected test runs and Claude-authored commits) are estimates, not records.
+- Images cover only the glyphs of the bundled IBM Plex Mono (see above).
+- v0.1.0 has been tested on Windows; macOS and Linux have not been verified yet.
 
 ## Principles
 
