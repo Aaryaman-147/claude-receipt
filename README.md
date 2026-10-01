@@ -39,7 +39,7 @@ plain    recorded directly
 
 ## Status
 
-**v0.1.0, pre-release.** It parses Claude Code's local session files, computes a Receipt, keeps a local metrics-only archive, prints a terminal receipt, and exports the receipt as a PNG or SVG image. The package is built and tested but **not yet published to npm**. Weekly/monthly summaries and Wrapped come later ([roadmap](docs/ROADMAP.md)).
+**v0.2.0, pre-release.** It parses Claude Code's local session files, computes a Receipt, keeps a local metrics-only archive, prints a terminal receipt, and exports the receipt as a PNG or SVG image. v0.2 adds history receipts across sessions (`all`, `week`, `month`), in the terminal, as JSON and as images. The package is built and tested but **not yet published to npm**. A yearly Wrapped and richer long-range analytics come later ([roadmap](docs/ROADMAP.md)).
 
 ## Install
 
@@ -55,7 +55,7 @@ Until the first npm release, install from a checkout:
 ```
 git clone <this repository> && cd claude-receipt
 npm install                       # also builds dist/ (the compiled CLI)
-npm install -g .                  # or: npm pack, then npm install -g ./claude-receipt-0.1.0.tgz
+npm install -g .                  # or: npm pack, then npm install -g ./claude-receipt-0.2.0.tgz
 ```
 
 The package contains the compiled JavaScript, the two bundled font files and the licences. Its one runtime dependency is `@resvg/resvg-wasm` (WebAssembly, no native code), which turns the receipt SVG into a PNG.
@@ -72,7 +72,7 @@ claude-receipt last --redact      # terminal receipt with project, paths and tit
 claude-receipt export             # a shareable PNG of the receipt (redacted)
 ```
 
-### History (v0.2, in development)
+### History (v0.2)
 
 ```
 claude-receipt all                # every finished session Claude Receipt knows about
@@ -129,7 +129,7 @@ Details: [docs/PRIVACY.md](docs/PRIVACY.md).
 - Receipts exist only for sessions still on disk or already archived. Sessions that Claude Code cleaned up before Claude Receipt first ran cannot be recovered.
 - Heuristic metrics (marked `~`, such as active time, detected test runs and Claude-authored commits) are estimates, not records.
 - Images cover only the glyphs of the bundled IBM Plex Mono (see above).
-- v0.1.0 has been tested on Windows; macOS and Linux have not been verified yet.
+- v0.2.0 has been tested on Windows; macOS and Linux have not been verified yet.
 
 ## Principles
 

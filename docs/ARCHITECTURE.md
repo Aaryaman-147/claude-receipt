@@ -148,7 +148,9 @@ Implemented in `src/archive/index.ts` (M2). A local, metrics-only record of sess
 
 **Location:** `~/.claude-receipt/archive/`, or `$CLAUDE_RECEIPT_HOME/archive/`. Never inside `~/.claude`. Created on first write.
 
-**Layout:** one file per session, `archive/<key>.json`. There is no database. At expected volumes (a few thousand sessions per year) a directory of small JSON files is simple, inspectable and easy to delete. Revisit only if aggregation becomes measurably slow.
+**Layout:** one file per session, `archive/<key>.json`. There is no database. At expected volumes (a few thousand sessions per year) a directory of small JSON files is simple, inspectable and easy to delete.
+
+**Performance (v0.2): no archive index is required for v0.2.** `scripts/bench-archive.ts` builds synthetic archives of 1,000 and 5,000 validated entries in a temporary home. On the benchmark machine a complete `claude-receipt all` takes about 0.4–0.7 s at 1,000 sessions and about 1.4–2.2 s at 5,000 (the range is the same machine under different load). Nearly all of it is reading, parsing and validating every entry (about 0.3–0.4 ms each, content hash included); aggregation is negligible (about 0.1 s for `all` at 5,000, milliseconds for `week` and `month`). 5,000 sessions is more than a year of heavy use, and every command reads the archive this way, so an index or a validated-entry cache is worth revisiting only when real archives approach that size or commands become noticeably slow. Numbers depend on the machine.
 
 ```ts
 interface ArchiveEntry {

@@ -22,7 +22,7 @@ const files = packed.files.map((f) => f.path.replace(/\\/g, "/")).sort();
 
 test("package metadata: name, version (= generator version), MIT, bin, engines, one pinned runtime dependency", () => {
   assert.equal(pkg.name, "claude-receipt");
-  assert.equal(pkg.version, "0.1.0");
+  assert.equal(pkg.version, "0.2.0");
   assert.equal(GENERATOR.version, pkg.version, "receipts record the package version");
   assert.equal(pkg.license, "MIT");
   assert.equal(pkg.private, undefined);

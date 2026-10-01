@@ -91,7 +91,7 @@ The archive is plain JSON so users can inspect it, and deleting the directory re
 
 Opt-in text features (recurring phrases, text-based personality) are computed from the transcript while it still exists and are **not archived**. So they're unavailable for sessions whose transcript has been cleaned up. This trade-off is deliberate.
 
-## 6. Export redaction (future visual receipt and shareable JSON)
+## 6. Export redaction (image exports, `--redact` and shareable JSON)
 
 Default redaction for anything written to a file or meant for sharing:
 

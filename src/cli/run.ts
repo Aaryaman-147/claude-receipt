@@ -43,14 +43,17 @@ export const USAGE = `usage: claude-receipt [<session-id-prefix> | last | list |
                  overwrites a file
 
 options:
-  --json         machine-readable output (the Receipt JSON contract)
+  --json         machine-readable output (the Receipt, or for all/week/month
+                 the HistoryReceipt, as JSON)
   --redact       hide project, paths, title; shorten ids (for sharing)
   --no-archive   read-only: don't write to the local archive
   --limit <n>    rows for list (default 20)
   --project      all/week/month (and their export): only this directory's project
   --png, --svg   export: image format (default --png)
   -o, --output <file>
-                 export: file to create (default ./claude-receipt-<id>.png)
+                 export: file to create (default ./claude-receipt-<id>.png,
+                 or ./claude-receipt-<period>[-project].png for a history;
+                 .svg with --svg)
   --no-redact    export: keep project, title and file names in the image
   -h, --help     this help
   -v, --version  version
@@ -101,7 +104,7 @@ function parse(argv: string[]): Args | { exit: number; out?: string; err?: strin
   if (positional.length > 1) return { exit: 2, err: `expected at most one command or session id, got ${positional.length}\n\n${USAGE}` };
   const p = positional[0];
   if (isExport) {
-    if (p === "list" || p === "export") return usage(`export takes "last" or a session id prefix, not "${p}"`);
+    if (p === "list" || p === "export") return usage(`export takes last, a session id prefix, all, week or month, not "${p}"`);
     if (a.json) return usage("--json does not apply to export");
     if (a.redact && noRedact) return usage("choose one of --redact or --no-redact");
     a.export = { format: format ?? "png", output, redact: !noRedact };

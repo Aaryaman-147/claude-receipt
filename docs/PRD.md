@@ -88,8 +88,8 @@ Specified in `docs/VISUAL_RECEIPT.md`:
 | `claude-receipt <sessionId>` | A specific session (a unique prefix is enough; ambiguous prefixes are an error) | MVP (M3) |
 | `claude-receipt --json` | The Receipt JSON contract (combines with the above; `list --json` prints semantic rows) | MVP (M3) |
 | `claude-receipt list` | Recent sessions (default 20, `--limit N`): start time, short id, project, duration, state; sessions whose transcript is gone come from the archive | MVP (M3) |
-| `claude-receipt all` / `week` / `month` | History receipt: every finished session, or the last 7 / 30 local calendar days (terminal, `--json`, and `export all|week|month` as SVG/PNG) | v0.2 (M5, in development) |
-| `claude-receipt all\|week\|month --project` | The same, for the current directory's project | v0.2 (M5, in development) |
+| `claude-receipt all` / `week` / `month` | History receipt: every finished session, or the last 7 / 30 local calendar days (terminal, `--json`, and `export all|week|month` as SVG/PNG) | v0.2 (M5) |
+| `claude-receipt all\|week\|month --project` | The same, for the current directory's project | v0.2 (M5) |
 | `claude-receipt export` | SVG/PNG receipt, redacted by default (`--no-redact` to opt out) | v0.1 (M6, built ahead of M5) |
 | `claude-receipt wrapped [year]` | Yearly Claude Wrapped | Future (M8) |
 

@@ -13,7 +13,7 @@ How Claude Receipt is built and checked before a release. Nothing here publishes
 
 `files` in `package.json` allowlists `bin/`, `dist/` and `assets/fonts/`; npm adds `package.json`, `README.md` and `LICENSE`. `test/package.test.ts` checks the real `npm pack` file list against that allowlist (no sources, tests, fixtures, docs or scripts), scans the compiled JS for local paths and ids, checks that `package.json`, the lockfile and the generator version agree, and that the built executable runs.
 
-The tarball is about 190 KB (about 485 KB unpacked); most of it is the two IBM Plex Mono files.
+The tarball is about 200 KB (about 530 KB unpacked); most of it is the two IBM Plex Mono files.
 
 ## Licences
 
