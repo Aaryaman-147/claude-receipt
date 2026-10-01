@@ -15,7 +15,7 @@ Claude Receipt turns Claude Code sessions into receipts: hard stats, coding stat
 - M3 (CLI in `src/cli/` with the archive sweep, terminal renderer in `src/render/tty.ts` + `format.ts`, redaction in `src/receipt/redact.ts`): implemented.
 - M6 (visual receipt): specified in `docs/VISUAL_RECEIPT.md` and being built ahead of M4/M5, in stages named "Visual Receipt — Spec / SVG / PNG / Packaging" (descriptive stage names, not milestone numbers; never renumber the official roadmap). All four stages are done (Spec, SVG, PNG, Packaging): `src/render/visual/spec.ts` (design tokens), `src/render/visual/layout.ts` (Receipt → VisualDoc), `src/render/svg.ts` (VisualDoc → SVG), `src/assets.ts` (loads the bundled fonts in `assets/fonts/`), `src/render/png.ts` (SVG → PNG via `@resvg/resvg-wasm`, the only runtime dependency), `src/cli/export.ts` (`claude-receipt export`, redacted by default). Packaging ships the fonts and resvg-wasm in the npm package (`docs/RELEASE.md`).
 - M4 (v0.1 release): packaged as `claude-receipt@0.1.0` (`tsc` build to `dist/`, MIT `LICENSE`), not published. Open: macOS/Linux install check, repository URL, publishing.
-- M5 (v0.2 historical receipts: `all`, `week`, `month`, `--project`): in progress. Milestone 1 done: the pure `src/aggregate/` module (`Receipt[]` + scope → `HistoryReceipt`, definitions in `docs/METRICS.md` → Historical metrics). Not built yet: the shared view-model rendering, the CLI commands and export, the benchmarks.
+- M5 (v0.2 historical receipts): in progress. Done: the pure `src/aggregate/` module (`Receipt[]` + scope → `HistoryReceipt`, definitions in `docs/METRICS.md` → Historical metrics); the shared rendering view model (`src/render/view.ts`: `sessionView` / `historyView` → `ReceiptView`, rendered by `tty.ts` and `visual/layout.ts`); `claude-receipt all | week | month [--project] [--json] [--redact] [--no-archive]` in the terminal and as JSON. Not built yet: SVG/PNG export of a history, the archive benchmarks.
 - M7+ (lore, Wrapped): not started. Don't build anything beyond the current task.
 - The visual renderer is a pure consumer of the Receipt, exactly like the terminal renderer: no filesystem, git, archive, transcript or environment access, no new analytics, and the same provenance marks and copy from `src/render/format.ts`.
 
@@ -27,6 +27,7 @@ Node ≥ 24 runs the TypeScript sources directly in development. The npm package
 |---|---|
 | `npm test` | All tests: parser (`test/source/`), analytics and Receipt contract (`test/analytics/`), git enrichment on throwaway repos (`test/git/`), archive (`test/archive/`), renderers and snapshots (`test/render/`), CLI, sweep and export (`test/cli/`), package contents (`test/package.test.ts`), fixture safety. Temp directories are removed in `after()` hooks; keep it that way |
 | `node src/cli/main.ts export [last \| <prefix>] [--png \| --svg] [-o <file>] [--no-redact]` | Write a visual receipt file (redacted by default, never overwrites; see `docs/VISUAL_RECEIPT.md` → Export). Exports are sensitive files; in tests write them to a temp directory |
+| `node src/cli/main.ts all \| week \| month [--project] [--json] [--redact] [--no-archive]` | History receipt (v0.2) over the sweep's candidate pool; `--json` prints the HistoryReceipt contract. Exit 1 when the period has no finished sessions |
 | `node src/cli/main.ts [last \| list \| <prefix>] [--json] [--redact] [--no-archive]` | The product CLI (also `npm run receipt --`, or `claude-receipt` after `npm link`). Writes to the real archive unless `--no-archive` or `CLAUDE_RECEIPT_HOME` points elsewhere |
 | `npm run typecheck` | `tsc` in strict mode, no emit |
 | `npm run build` | Compile `src/` (minus `src/dev/`) to `dist/` with `tsconfig.build.json` |
@@ -46,7 +47,9 @@ Node ≥ 24 runs the TypeScript sources directly in development. The npm package
 ## Architectural boundaries (do not cross)
 
 ```
-source/claude-code  →  Session  →  analytics  →  Receipt  →  render/tty | render/json | render/visual → render/svg
+source/claude-code  →  Session  →  analytics  →  Receipt  →  render/view (sessionView) → render/tty | render/visual → render/svg
+                                                            →  render/json
+                                                   Receipt[] → aggregate → HistoryReceipt → render/view (historyView) → render/tty ; render/json
                                         ↓
                                  archive (metrics only)  →  aggregate  →  (future) week / month / wrapped
 ```

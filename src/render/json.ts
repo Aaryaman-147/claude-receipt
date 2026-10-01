@@ -1,5 +1,6 @@
-// The machine-readable contract: the Receipt, as is (schemaVersion inside). Renderers own
-// presentation; this one owns none.
+// The machine-readable contracts: the Receipt or the HistoryReceipt, as is (kind and schemaVersion
+// inside). Renderers own presentation; this one owns none.
+import type { HistoryReceipt } from "../aggregate/types.ts";
 import type { Receipt } from "../receipt/types.ts";
 
-export const renderJson = (receipt: Receipt | Receipt[]): string => `${JSON.stringify(receipt, null, 2)}\n`;
+export const renderJson = (value: Receipt | Receipt[] | HistoryReceipt): string => `${JSON.stringify(value, null, 2)}\n`;

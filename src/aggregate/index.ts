@@ -246,7 +246,7 @@ export function aggregate(receipts: Receipt[], opts: AggregateOptions): HistoryR
     add(build("agg.topProjects", n, named.length ? ranked(counts, (key, s) => ({ project: names.get(key)!, sessions: s })) : null, [], named.length, { reason: "no session has a project" }));
   }
 
-  const scope: HistoryScope = { period, since: bounds.since, until: bounds.until, projectKey };
+  const scope: HistoryScope = { period, since: bounds.since, until: bounds.until, projectKey, projectFilter: projectKey !== null };
   const order = new Map(HISTORY_METRIC_IDS.map((id, i) => [id, i]));
   const of = (section: "hard" | "coding" | "lore") => metrics.filter((m) => HISTORY_METRICS[m.id].section === section).sort((a, b) => order.get(a.id)! - order.get(b.id)!);
   return {

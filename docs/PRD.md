@@ -88,8 +88,8 @@ Specified in `docs/VISUAL_RECEIPT.md`:
 | `claude-receipt <sessionId>` | A specific session (a unique prefix is enough; ambiguous prefixes are an error) | MVP (M3) |
 | `claude-receipt --json` | The Receipt JSON contract (combines with the above; `list --json` prints semantic rows) | MVP (M3) |
 | `claude-receipt list` | Recent sessions (default 20, `--limit N`): start time, short id, project, duration, state; sessions whose transcript is gone come from the archive | MVP (M3) |
-| `claude-receipt --project` | Aggregate receipt for the current project | Future (M5) |
-| `claude-receipt --week` / `--month` | Aggregate receipt for a period | Future (M5) |
+| `claude-receipt all` / `week` / `month` | History receipt: every finished session, or the last 7 / 30 local calendar days (terminal and `--json`) | v0.2 (M5, in development) |
+| `claude-receipt all\|week\|month --project` | The same, for the current directory's project | v0.2 (M5, in development) |
 | `claude-receipt export` | SVG/PNG receipt, redacted by default (`--no-redact` to opt out) | v0.1 (M6, built ahead of M5) |
 | `claude-receipt wrapped [year]` | Yearly Claude Wrapped | Future (M8) |
 
@@ -109,7 +109,7 @@ Every run archives newly seen or changed sessions as a side effect, so history a
 
 **Out (postponed):**
 
-- `--project`, `--week`, `--month`, `wrapped`.
+- `wrapped`. (`all`, `week`, `month` and `--project` are v0.2.)
 - Any feature that reads prompt or response text (recurring phrases, text-based personality).
 - `--run` (receipt for only the latest run of a resumed session). The data is preserved; the option isn't built.
 - Entrypoint filtering (e.g. excluding headless sessions). The data is preserved; the option isn't built.
@@ -126,7 +126,7 @@ Every run archives newly seen or changed sessions as a side effect, so history a
 
 ## 8. Future direction
 
-- **Periods** (M5): project, week and month receipts from the archive.
+- **Periods** (M5, v0.2): `all`, `week`, `month` and `--project` history receipts from the archive and the current sweep (`METRICS.md` → Historical metrics).
 - **Visual receipt** (M6): the shareable artefact, with redaction on by default.
 - **Claude Wrapped** (M8): the yearly story, with top projects, languages, busiest day, longest session and personality over time.
 - **Opt-in text lore** (M7): recurring Claude phrases and text-informed personality, computed in memory and never archived as text.

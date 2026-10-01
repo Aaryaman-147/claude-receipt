@@ -1,12 +1,16 @@
 // The claude-receipt command (docs/PRD.md §5.4). Glue only: sweep → select → render.
 // Testable: all I/O goes through `io`. stdout carries only the requested output (a receipt,
 // a list, JSON, or the path of an exported file); notes, archive status and problems go to stderr.
+import { aggregate } from "../aggregate/index.ts";
+import type { Period } from "../aggregate/types.ts";
+import { validateHistory } from "../aggregate/validate.ts";
 import { archiveDir } from "../archive/index.ts";
-import { redactReceipt } from "../receipt/redact.ts";
+import { redactHistory, redactReceipt } from "../receipt/redact.ts";
 import { GENERATOR, type Receipt } from "../receipt/types.ts";
-import { duration, fit, localTime, MARK } from "../render/format.ts";
+import { duration, fit, localTime, MARK, PERIOD_LABELS } from "../render/format.ts";
 import { renderJson } from "../render/json.ts";
-import { renderTerminal } from "../render/tty.ts";
+import { renderTerminal, renderViewTerminal } from "../render/tty.ts";
+import { historyView } from "../render/view.ts";
 import { claudeHome, projectKey } from "../source/claude-code/index.ts";
 import { exportReceipt } from "./export.ts";
 import { refresh, sweep, type Candidate, type SweepReport } from "./sweep.ts";
@@ -29,6 +33,9 @@ export const USAGE = `usage: claude-receipt [<session-id-prefix> | last | list] 
                  directory, else the most recent session anywhere
   last           receipt for the most recent completed session anywhere
   list           recent sessions, newest first
+  all            history: every finished session Claude Receipt knows about
+  week | month   history: sessions started in the last 7 / 30 local calendar
+                 days, today included
   <prefix>       receipt for the session whose id starts with <prefix>
   export         write that receipt as an image file (same session choice);
                  PNG by default, redacted by default, never overwrites a file
@@ -38,6 +45,7 @@ options:
   --redact       hide project, paths, title; shorten ids (for sharing)
   --no-archive   read-only: don't write to the local archive
   --limit <n>    rows for list (default 20)
+  --project      all/week/month: only this directory's project
   --png, --svg   export: image format (default --png)
   -o, --output <file>
                  export: file to create (default ./claude-receipt-<id>.png)
@@ -53,10 +61,13 @@ Every run archives finished sessions to ~/.claude-receipt/archive
 interface Args {
   command: "receipt" | "last" | "list"; prefix: string | null; json: boolean; redact: boolean; write: boolean; limit: number;
   export: { format: "png" | "svg"; output: string | null; redact: boolean } | null;
+  history: Period | null; project: boolean;
 }
 
+const PERIODS: readonly string[] = ["all", "week", "month"];
+
 function parse(argv: string[]): Args | { exit: number; out?: string; err?: string } {
-  const a: Args = { command: "receipt", prefix: null, json: false, redact: false, write: true, limit: 20, export: null };
+  const a: Args = { command: "receipt", prefix: null, json: false, redact: false, write: true, limit: 20, export: null, history: null, project: false };
   let format: "png" | "svg" | null = null, output: string | null = null, noRedact = false;
   const usage = (msg: string) => ({ exit: 2, err: `${msg}\n\n${USAGE}` });
   const positional: string[] = [];
@@ -68,6 +79,7 @@ function parse(argv: string[]): Args | { exit: number; out?: string; err?: strin
     else if (x === "--redact") a.redact = true;
     else if (x === "--no-archive") a.write = false;
     else if (x === "--no-redact") noRedact = true;
+    else if (x === "--project") a.project = true;
     else if (x === "--png" || x === "--svg") {
       if (format && format !== x.slice(2)) return usage("choose one of --png or --svg");
       format = x.slice(2) as "png" | "svg";
@@ -92,6 +104,9 @@ function parse(argv: string[]): Args | { exit: number; out?: string; err?: strin
     if (a.redact && noRedact) return usage("choose one of --redact or --no-redact");
     a.export = { format: format ?? "png", output, redact: !noRedact };
   } else if (format || output !== null || noRedact) return usage("--png, --svg, --output and --no-redact only apply to export");
+  if (!isExport && p !== undefined && PERIODS.includes(p)) a.history = p as Period;
+  else if (a.project) return usage("--project only applies to all, week and month");
+  if (a.history) return argv.includes("--limit") ? { exit: 2, err: `--limit only applies to list\n\n${USAGE}` } : a;
   if (p === "last" || p === "list") a.command = p;
   else if (p !== undefined) a.prefix = p;
   if (a.command !== "list" && argv.includes("--limit")) return { exit: 2, err: `--limit only applies to list\n\n${USAGE}` };
@@ -159,6 +174,27 @@ function listRows(cands: Candidate[], args: Args, io: Io) {
   io.stdout(`${[head, ...body, "", `times: ${tz}.${rows.some((x) => x.wall.value !== null) ? " * computed from recorded data." : ""}`].join("\n")}\n`);
 }
 
+// all / week / month (v0.2): the sweep's candidate pool (archived and freshly built Receipts, one
+// per session id) aggregated into a HistoryReceipt. --no-archive only stops archive writes.
+function history(period: Period, pool: Candidate[], args: Args, io: Io): number {
+  const timeZone = io.timeZone ?? Intl.DateTimeFormat().resolvedOptions().timeZone;
+  const key = args.project ? projectKey(io.cwd) : null; // the same key v0.1 groups sessions by
+  let h = aggregate(pool.map((c) => c.receipt), { period, now: io.now ?? new Date(), timeZone, projectKey: key });
+  if (args.redact) h = redactHistory(h);
+  const problems = validateHistory(h);
+  if (problems.length) { io.stderr(`claude-receipt: internal error: invalid history (${problems.slice(0, 3).join("; ")})\n`); return 1; }
+  const where = `${period === "all" ? "" : ` in the ${PERIOD_LABELS[period].toLowerCase()}`}${args.project ? " for this directory's project" : ""}`;
+  if (h.coverage.sessions === 0) {
+    const excluded = [h.coverage.liveExcluded && `${h.coverage.liveExcluded} still running`, h.coverage.undated && period !== "all" && `${h.coverage.undated} undated`].filter(Boolean);
+    io.stderr(`claude-receipt: no finished sessions${where}${excluded.length ? ` (${excluded.join(", ")})` : ""}\n`);
+    return 1;
+  }
+  if (args.json) io.stdout(renderJson(h));
+  else io.stdout(renderViewTerminal(historyView(h), { width: io.isTTY && io.columns ? io.columns : 40, color: io.isTTY && !io.env.NO_COLOR }));
+  io.stderr(`claude-receipt: ${h.coverage.sessions} finished session${h.coverage.sessions === 1 ? "" : "s"}${where}${args.write ? "" : "; nothing archived (--no-archive)"}\n`);
+  return 0;
+}
+
 export async function run(argv: string[], io: Io): Promise<number> {
   const args = parse(argv);
   if ("exit" in args) {
@@ -171,6 +207,8 @@ export async function run(argv: string[], io: Io): Promise<number> {
   const { candidates, report } = await sweep(opts);
   reportProblems(report, io);
   const all = [...candidates.values()].sort(newestFirst);
+
+  if (args.history) return history(args.history, all, args, io);
 
   if (args.command === "list") {
     if (!all.length) { io.stderr("claude-receipt: no sessions found\n"); if (args.json) io.stdout(json([])); return 0; }

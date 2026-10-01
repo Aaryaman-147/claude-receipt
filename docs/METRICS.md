@@ -284,7 +284,17 @@ Implemented in `src/aggregate/` (types in `types.ts`, contract check in `validat
 - `week`: the last 7 local calendar days including today; `month`: the last 30. Local days are in the viewer's time zone; the period is `[since, until)` in UTC, from the local midnight that starts the first day to the local midnight after today (on a DST day that skips midnight, the day starts at its first existing instant).
 - A session belongs to the period containing its `startedAt`. A session resumed later still counts in its start period.
 - Undated sessions count only in `all`; live sessions never count. Both stay visible in `coverage` (`undated`, `liveExcluded`), and so do aggregated sessions whose transcript ended without a clean close (`incomplete`).
-- `--project` keeps only sessions whose `projectKey` equals the current directory's key.
+- `--project` keeps only sessions whose `projectKey` equals the current directory's key (case-insensitive for Windows paths, as in v0.1); never a name match.
+
+**Project scope descriptor** (`scope`, part of schemaVersion 1):
+
+| `projectFilter` | `projectKey` | Meaning |
+|---|---|---|
+| `false` | `null` | No project filter: every project in the period. |
+| `true` | the key | Explicitly limited to one project; the key identifies it (unredacted output only). |
+| `true` | `null` | Explicitly limited to one project, and redaction hid which one. |
+
+The key is a path, so it is sensitive: redaction (`redactHistory`) always sets it to `null` and keeps `projectFilter: true`, so a redacted receipt still says it covers one project without saying which. The validator rejects a key without the filter. The descriptor can never carry a path in redacted output: renderers show the project name only from `agg.topProjects` (itself hidden by redaction), otherwise "THIS DIRECTORY".
 
 **Coverage** (always present): sessions, distinct projects, undated, live excluded, incomplete, first and last local start date, days with data, days in period (7, 30, or the first-to-last span for `all`), and the generator versions and time zones of the aggregated Receipts. A `mixed-time-zones` warning appears when those zones differ (peak-hour histograms are in each session's own zone). "All" covers only what Claude Receipt has seen: sessions Claude Code cleaned up before the first run are absent, never filled in.
 

@@ -72,6 +72,18 @@ claude-receipt last --redact      # terminal receipt with project, paths and tit
 claude-receipt export             # a shareable PNG of the receipt (redacted)
 ```
 
+### History (v0.2, in development)
+
+```
+claude-receipt all                # every finished session Claude Receipt knows about
+claude-receipt week               # sessions started in the last 7 local calendar days, today included
+claude-receipt month              # the last 30 local calendar days
+claude-receipt week --project     # only this directory's project
+claude-receipt all --json         # the HistoryReceipt as JSON
+```
+
+A history receipt sums and ranks the per-session metrics that add up cleanly (time, tokens, API EQUIVALENT, prompts, tool calls, lines, commands, languages, programs, tools, models) and adds a few records (longest session, biggest rabbit hole, busiest day, longest streak, peak hour). Per-session file counts and git commit counts are not summed, because they would double count. The header shows what it covers: sessions, projects, first and last dates, days with data, and sessions not counted (still running, or undated in a week or month). A session counts in the period it started in. Live sessions are never counted. Metrics that only some sessions have say so (`based on 11 of 14 sessions: …`), and nothing missing is shown as zero. `--redact` hides project names and paths. "All" means every session Claude Receipt has seen: sessions Claude Code cleaned up before the first run are not included. Image export of a history is not available yet.
+
 **Reading a receipt.** Plain values were recorded by Claude Code, values ending in `*` were computed from recorded data, and values starting with `~` are heuristic estimates (their labels say so too, such as `ACTIVE TIME (EST.)`). Metrics that can't be determined are left out and counted (`N metrics unavailable, not shown`), never shown as zero. **API EQUIVALENT** is what the session's tokens would cost at Anthropic's API list prices: Claude Code's own recorded cost when it has one, otherwise computed from a price table that ships with the package. It is an equivalent, not a charge or a bill.
 
 **The archive.** Every run first sweeps Claude Code's local sessions and saves each finished one to `~/.claude-receipt/archive/`: the computed metrics plus the session header (session id, project name and directory, times, Claude Code version) and the most-edited file path, but no prompts, responses, code, tool output, commands or session titles. Receipts survive Claude Code's transcript cleanup. Live sessions are not archived. `--no-archive` makes a run read-only.

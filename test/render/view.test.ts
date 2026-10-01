@@ -108,8 +108,50 @@ test("renderers render the view: the Receipt entry points equal rendering the se
   }
 });
 
-test("view.ts is pure: imports only the Receipt types and the shared format module", () => {
+test("view.ts is pure: imports only the Receipt and HistoryReceipt types and the shared format module", () => {
   const src = readFileSync("src/render/view.ts", "utf8");
-  for (const [, from] of src.matchAll(/^import[^;]*?from "([^"]+)"/gm)) assert.match(from!, /^\.\.?\/(\.\.\/receipt\/types|receipt\/types|format)\.ts$/, from!);
+  for (const [, from] of src.matchAll(/^import[^;]*?from "([^"]+)"/gm)) assert.match(from!, /^\.\.?\/(\.\.\/receipt\/types|receipt\/types|aggregate\/types|format)\.ts$/, from!);
   assert.ok(!/\b(process\.|Date\.now|new Date\(|Math\.random|require\(|node:|\\x1b|<svg)/.test(src));
+});
+
+// ---- history (v0.2 milestone 3) ----
+
+test("history view: coverage header, no band, sections in registry order, bold/total rules, partial-coverage footnotes", async () => {
+  const { aggregate } = await import("../../src/aggregate/index.ts");
+  const { historyView } = await import("../../src/render/view.ts");
+  const { HISTORY_LABELS, PERIOD_LABELS } = await import("../../src/render/format.ts");
+  const rs = await receipts();
+  const h = aggregate(rs, { period: "all", now: NOW, timeZone: "UTC" });
+  const v = historyView(h);
+  assert.equal(v.subtitle, "itemized history");
+  assert.equal(v.band, null);
+  assert.equal(v.note, null);
+  assert.deepEqual(v.header.slice(0, 3).map((r) => [r.label, r.value]), [["PERIOD", PERIOD_LABELS.all], ["SESSIONS", String(h.coverage.sessions)], ["PROJECTS", String(h.coverage.projects)]]);
+  assert.ok(v.header.every((r) => r.provenance === "exact" && r.metricId === undefined));
+  const entries = v.sections.flatMap((s) => s.entries);
+  const shown = Object.values(h.sections).flat().filter((m) => m.value !== null && !(Array.isArray(m.value) && !m.value.length));
+  assert.deepEqual(entries.map((e) => e.metricId), shown.map((m) => m.id));
+  for (const e of entries) {
+    const m = shown.find((x) => x.id === e.metricId)!;
+    assert.equal(e.provenance, m.provenance);
+    for (const row of e.rows) assert.equal(row.bold === true, PRIMARY.has(e.metricId) && e.provenance !== "heuristic");
+  }
+  assert.deepEqual(entries.filter((e) => e.total).map((e) => e.metricId), ["agg.cost.apiEquivalent"]);
+  const partial = shown.filter((m) => m.covered.sessions < m.covered.of);
+  const texts = v.footnotes.filter((f): f is { text: string; wrap: boolean } => "text" in f).map((f) => f.text);
+  for (const m of partial) assert.ok(texts.some((t) => t.startsWith(`based on ${m.covered.sessions} of ${h.coverage.sessions} sessions:`) && t.includes(HISTORY_LABELS[m.id])), m.id);
+  assert.equal(texts.at(-1), "times: UTC");
+  assert.ok(!/LIVE|session id/.test(JSON.stringify(v)));
+});
+
+test("history view is presentation only and renders through the shared terminal renderer", async () => {
+  const { aggregate } = await import("../../src/aggregate/index.ts");
+  const { historyView } = await import("../../src/render/view.ts");
+  const h = aggregate(await receipts(), { period: "month", now: NOW, timeZone: "UTC" });
+  const leaves = (x: unknown): unknown[] => (x !== null && typeof x === "object" ? Object.values(x).flatMap(leaves) : [x]);
+  assert.ok(leaves(historyView(h)).every((x) => typeof x === "string" || typeof x === "boolean" || x === null));
+  const out = renderViewTerminal(historyView(h));
+  assert.ok(out.startsWith("/\\/\\"), "the same torn top edge");
+  assert.match(out, /PERIOD \.+ LAST 30 DAYS\n/);
+  assert.match(out, /plain {4}recorded directly/);
 });

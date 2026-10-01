@@ -3,6 +3,7 @@
 // terminal and the visual receipt both take their words and numbers from here, so they always say
 // the same thing. Nothing here computes a metric. Heuristic metrics get labels that say what they
 // are ("DETECTED", "EST.") so wording never upgrades them to facts.
+import type { HistoryMetric, HistoryMetricId, Period } from "../aggregate/types.ts";
 import type { Metric, MetricId, Provenance, Receipt } from "../receipt/types.ts";
 
 export const LABELS: Record<MetricId, string> = {
@@ -51,7 +52,10 @@ export const SECTION_TITLES = { hard: "HARD STATS", coding: "CODING STATS", lore
 export const MARK = { derived: " *", heuristicPrefix: "~" } as const;
 export const markFor = (p: Provenance): "" | "*" | "~" => (p === "derived" ? "*" : p === "heuristic" ? "~" : "");
 // Primary values, emphasized in place (never reordered); a heuristic value is never emphasized.
-export const PRIMARY: ReadonlySet<string> = new Set(["session.duration.wall", "tokens.input", "tokens.output", "cost.apiEquivalent", "lines.added", "lines.removed"]);
+export const PRIMARY: ReadonlySet<string> = new Set([
+  "session.duration.wall", "tokens.input", "tokens.output", "cost.apiEquivalent", "lines.added", "lines.removed",
+  "agg.duration.wall", "agg.tokens.input", "agg.tokens.output", "agg.cost.apiEquivalent", "agg.lines.added", "agg.lines.removed",
+]);
 // Legend order, and each legend line fits the narrowest receipt (28 columns).
 export const LEGEND_ORDER: readonly Provenance[] = ["exact", "derived", "heuristic"];
 export const LEGEND: Record<Provenance, string> = {
@@ -63,6 +67,8 @@ export const LEGEND: Record<Provenance, string> = {
 // Copy. Playful, makes no claims about the session. Footers must not use `~` or `*`.
 export const TITLE = "CLAUDE RECEIPT";
 export const SUBTITLE = "itemized session record";
+export const HISTORY_SUBTITLE = "itemized history";
+export const PERIOD_LABELS: Record<Period, string> = { all: "ALL SESSIONS", week: "LAST 7 DAYS", month: "LAST 30 DAYS" };
 export const LIVE_TERMINAL = "[ LIVE SESSION: STILL RUNNING ]";
 export const LIVE_BAND = "LIVE · STILL RUNNING";
 export const FOOTERS = ["THANK YOU FOR SHIPPING", "NO REFUNDS ON TOKENS", "KEEP FOR YOUR RECORDS", "PRINTED LOCALLY. NOTHING UPLOADED."];
@@ -186,4 +192,73 @@ export function identityRows(s: Receipt["session"], timeZone: string): Row[] {
     ["FORK OF", s.forkOf && s.forkOf.slice(0, 8)],
   ];
   return rows.filter((r): r is [string, string] => !!r[1]).map(([label, value]) => ({ label, value }));
+}
+
+// ---- history (v0.2): labels and rows for HistoryReceipt metrics ----
+
+export const HISTORY_LABELS: Record<HistoryMetricId, string> = {
+  "agg.duration.wall": "TIME IN SESSIONS",
+  "agg.duration.active": "ACTIVE TIME (EST.)",
+  "agg.api.duration": "CLAUDE WORKING",
+  "agg.models": "MODELS",
+  "agg.tokens.input": "TOKENS IN",
+  "agg.tokens.output": "TOKENS OUT",
+  "agg.tokens.cacheRead": "CACHE READ",
+  "agg.tokens.cacheWrite": "CACHE WRITE",
+  "agg.cost.apiEquivalent": "API EQUIVALENT",
+  "agg.prompts": "PROMPTS",
+  "agg.toolCalls": "TOOL CALLS",
+  "agg.toolCalls.byName": "TOP TOOLS",
+  "agg.turns": "TURNS",
+  "agg.lines.added": "LINES ADDED",
+  "agg.lines.removed": "LINES REMOVED",
+  "agg.languages": "LANGUAGES",
+  "agg.commands.count": "SHELL COMMANDS",
+  "agg.commands.topPrograms": "TOP PROGRAMS",
+  "agg.tests.runs": "TEST RUNS DETECTED",
+  "agg.errors.toolErrors": "TOOL ERRORS",
+  "agg.interruptions": "INTERRUPTED TOOL RUNS",
+  "agg.commits.byClaude": "CLAUDE COMMITS DETECTED",
+  "agg.busiestDay": "BUSIEST DAY",
+  "agg.peakHour": "PEAK HOUR",
+  "agg.streak": "LONGEST STREAK",
+  "agg.longestSession": "LONGEST SESSION",
+  "agg.rabbitHole": "BIGGEST RABBIT HOLE",
+  "agg.longestTurn": "LONGEST TURN",
+  "agg.errorStreak": "LONGEST ERROR STREAK",
+  "agg.cacheHitRate": "CACHE HIT RATE",
+  "agg.topProjects": "TOP PROJECTS",
+};
+
+const plural = (n: number, word: string) => `${int(n)} ${word}${n === 1 ? "" : "s"}`;
+
+export const isHistoryShown = (m: HistoryMetric) =>
+  m.value !== null && (!Array.isArray(m.value) || m.value.length > 0) && !(m.id === "agg.toolCalls.byName" && Object.keys(m.value as object).length === 0);
+
+export function historyMetricRows(m: HistoryMetric): { heading?: string; rows: Row[] } {
+  const label = HISTORY_LABELS[m.id];
+  const one = (value: string): { rows: Row[] } => ({ rows: [{ label, value }] });
+  switch (m.id) {
+    case "agg.duration.wall": case "agg.duration.active": case "agg.api.duration": return one(duration(m.value!));
+    case "agg.cost.apiEquivalent": return one(usd(m.value!));
+    case "agg.lines.added": return one(`+${int(m.value!)}`);
+    case "agg.lines.removed": return one(`-${int(m.value!)}`);
+    case "agg.cacheHitRate": return one(pct(m.value!));
+    case "agg.peakHour": return one(hour(m.value!));
+    case "agg.busiestDay": return one(`${m.value!.date} (${plural(m.value!.sessions, "session")})`);
+    case "agg.streak": return one(plural(m.value!.days, "day"));
+    case "agg.longestSession": case "agg.longestTurn": return one(duration(m.value!.durationMs));
+    case "agg.errorStreak": return one(int(m.value!.count));
+    case "agg.rabbitHole": {
+      const v = m.value!;
+      return one(`${v.toolCalls} call${v.toolCalls === 1 ? "" : "s"}${v.durationMs === null ? "" : ` in ${duration(v.durationMs)}`}`);
+    }
+    case "agg.models": return { heading: label, rows: top(m.value!, 5).map((x) => ({ label: `  ${model(x.model)}`, value: plural(x.sessions, "session") })) };
+    case "agg.toolCalls.byName":
+      return { heading: label, rows: top(Object.entries(m.value!).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))).map(([name, n]) => ({ label: `  ${name}`, value: int(n) })) };
+    case "agg.languages": return { heading: label, rows: top(m.value!).map((l) => ({ label: `  ${l.language}`, value: `${int(l.lines)} lines` })) };
+    case "agg.commands.topPrograms": return { heading: label, rows: top(m.value!).map((p) => ({ label: `  ${p.program}`, value: int(p.count) })) };
+    case "agg.topProjects": return { heading: label, rows: top(m.value!).map((p) => ({ label: `  ${p.project}`, value: plural(p.sessions, "session") })) };
+    default: return one(int(m.value as number));
+  }
 }

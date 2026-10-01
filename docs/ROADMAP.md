@@ -132,9 +132,13 @@ Git enrichment was delivered in M1b.
 - `claude-receipt last --run`: receipt for only the most recent run of a resumed session (uses `Session.runs`).
 - Entrypoint filtering, e.g. excluding headless `sdk-cli` sessions (uses `Session.entrypoint`). Headless sessions are included by default.
 
-### M5: Periods (`--project`, `--week`, `--month`)
-- [ ] Aggregates computed only from archive entries. `agg.coverage` shows data gaps honestly.
-- [ ] Local-timezone bucketing with a test across a DST change.
+### M5: Periods (v0.2: `all`, `week`, `month`, `--project`)
+- [x] `src/aggregate/`: pure `Receipt[]` + scope → `HistoryReceipt`, computed from the sweep's candidate pool (archived and freshly built Receipts, one per session id). Coverage shows data gaps honestly; partial metrics say how many sessions they cover.
+- [x] Local calendar-day periods in the viewer's zone, tested across DST changes and a zone that skips midnight.
+- [x] Shared rendering view model (`src/render/view.ts`) for session and history receipts; v0.1 output byte-identical.
+- [x] `claude-receipt all | week | month [--project] [--json] [--redact] [--no-archive]` (terminal and JSON).
+- [ ] SVG/PNG export of a history.
+- [ ] Synthetic 1,000 / 5,000-session archive benchmarks (decide whether a v0.2.x archive index is needed).
 
 ### M6: Visual receipt (SVG/PNG)
 

@@ -100,7 +100,12 @@ export interface HistoryScope {
   period: Period;
   since: string | null; // UTC instant of the first local midnight in the period (null for "all")
   until: string | null; // UTC instant of the local midnight after the period (exclusive; null for "all")
-  projectKey: string | null; // --project: only sessions with this key (a path: sensitive)
+  // The project scope descriptor (docs/METRICS.md → Historical metrics → Project scope):
+  // projectFilter false = no project filter; true = explicitly limited to one project (--project).
+  // projectKey identifies that project in unredacted output only; it is a path, so redaction sets
+  // it to null while projectFilter stays true. The validator rejects a key without the filter.
+  projectKey: string | null;
+  projectFilter: boolean;
 }
 
 export interface HistoryCoverage {

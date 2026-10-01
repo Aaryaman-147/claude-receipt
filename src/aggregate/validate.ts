@@ -48,7 +48,8 @@ export function validateHistory(h: unknown): string[] {
   const s = h.scope;
   if (!isObj(s)) errs.push("scope");
   else {
-    need(keysOnly(s, ["period", "since", "until", "projectKey"]), "scope: unknown field");
+    need(keysOnly(s, ["period", "since", "until", "projectKey", "projectFilter"]), "scope: unknown field");
+    need(typeof s.projectFilter === "boolean" && (s.projectKey === null || s.projectFilter === true), "scope.projectFilter");
     need(s.period === "all" || s.period === "week" || s.period === "month", "scope.period");
     const bounded = s.period !== "all";
     for (const k of ["since", "until"]) need(bounded ? typeof s[k] === "string" && ISO.test(s[k] as string) : s[k] === null, `scope.${k}`);

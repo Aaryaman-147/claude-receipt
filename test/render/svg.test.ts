@@ -308,7 +308,7 @@ test("purity: the Receipt is not mutated; layout and SVG modules import no I/O",
   assert.equal(JSON.stringify(r), before);
   for (const f of ["src/render/visual/layout.ts", "src/render/visual/spec.ts", "src/render/svg.ts", "src/render/format.ts", "src/render/view.ts"]) {
     const imports = [...readFileSync(f, "utf8").matchAll(/^import[^;]*?from "([^"]+)"/gm)].map((m) => m[1]);
-    for (const i of imports) assert.match(i!, /^\.\.?\/(\.\.\/receipt\/types|receipt\/types|format|view|spec|visual\/layout|visual\/spec|layout)\.ts$/, `${f} imports ${i}`);
+    for (const i of imports) assert.match(i!, /^\.\.?\/(\.\.\/receipt\/types|receipt\/types|aggregate\/types|format|view|spec|visual\/layout|visual\/spec|layout)\.ts$/, `${f} imports ${i}`);
     assert.ok(!/\b(process\.|Date\.now|new Date\(\)|Math\.random|require\()/.test(readFileSync(f, "utf8")), `${f}: ambient input`);
   }
 });
