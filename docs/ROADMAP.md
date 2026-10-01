@@ -114,14 +114,15 @@ Each item gets a short written finding in `M0_FINDINGS.md` and at least one fixt
 - [x] Works with `NO_COLOR` and in non-TTY output (plain ASCII; ANSI only on a TTY), and with wide characters in project names (alignment test). Instead of the `string-width` dependency, a small built-in display-width function (wide East Asian and emoji = 2, combining marks = 0). Windows Terminal/PowerShell: ASCII-only output; verified in this environment's terminal, not in a separate console test.
 - [x] `--redact` applies export redaction rules (`PRIVACY.md` §6).
 - [x] Snapshot tests for three fixtures (`test/render/snapshots/`).
-- Not done: `npx claude-receipt` from npm needs the M4 build step (Node doesn't strip TypeScript inside `node_modules`). From a checkout: `node src/cli/main.ts` or `npm link`.
+- ~~Not done: `npx claude-receipt` from npm needs the M4 build step~~ Resolved in M4: the package runs compiled `dist/` (`docs/RELEASE.md`).
 
 ## M4: v0.1 release
 
 Git enrichment was delivered in M1b.
 
-- [ ] Release checklist: README updated with real commands and a real (redacted) sample; npm name confirmed; packaging/build step for the TypeScript sources; `npx claude-receipt` works on Windows, macOS and Linux; the privacy doc matches behaviour.
-- [ ] Project licence: an MIT `LICENSE` file (and `license` in `package.json`), added before packaging. Third-party licences stay with their components and ship with them: IBM Plex Mono (OFL-1.1, with the font files), `@resvg/resvg-wasm` (MPL-2.0).
+- [x] Packaging (`docs/RELEASE.md`): `tsc` build to `dist/`, package `claude-receipt@0.1.0` with a `files` allowlist (compiled JS, fonts, licences), tested with `npm pack` and a clean install from the tarball (local, global prefix and `npx`) on Windows. README with real commands and a redacted sample image. npm name `claude-receipt` was unclaimed when checked.
+- [ ] Release checklist still open: the clean-install check on macOS and Linux; a repository URL in `package.json`; publishing to npm.
+- [x] Project licence: an MIT `LICENSE` file (and `license` in `package.json`), added before packaging. Third-party licences stay with their components and ship with them: IBM Plex Mono (OFL-1.1, with the font files), `@resvg/resvg-wasm` (MPL-2.0).
 
 ---
 
@@ -143,7 +144,7 @@ Specification: `docs/VISUAL_RECEIPT.md`. M6 is being built ahead of M4 and M5; t
 - [x] **Visual Receipt — SVG:** pure layout model and hand-written deterministic SVG from the same Receipt (the canonical visual output; no Satori, no frontend framework). IBM Plex Mono Regular and Bold bundled unmodified with their OFL-1.1 licence. Golden SVG tests.
 - [x] **Visual Receipt — PNG:** PNG rendered from the SVG with `@resvg/resvg-wasm` (pinned) at 2× (1248 px wide). `claude-receipt export`, redacted by default via `redactReceipt()`, with one opt-out, `--no-redact`. PNG determinism and privacy tests.
 - [ ] Exact, derived and heuristic values are visually distinguishable in the image with the same meaning as in the terminal, with a legend (`METRICS.md` → Rendering rule).
-- [ ] **Visual Receipt — Packaging:** fonts, licence files and the WASM binary ship in the npm package (coordinated with M4); optional polish such as paper grain only if it doesn't harm readability.
+- [x] **Visual Receipt — Packaging:** fonts, licence files and the WASM binary ship in the npm package (coordinated with M4); optional polish such as paper grain only if it doesn't harm readability (not done; none planned for v0.1).
 - Image glyph coverage is limited to IBM Plex Mono's; no CJK fallback font is bundled.
 
 ### M7: Lore expansion and opt-in text features

@@ -5,3 +5,4 @@ fixtures/** -text
 assets/fonts/*.txt -text -whitespace
 # Golden snapshots are compared byte-for-byte: never convert line endings.
 test/render/snapshots/** -text
+*.png binary

@@ -4,7 +4,7 @@ import assert from "node:assert/strict";
 import { existsSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { test } from "node:test";
+import { after, test } from "node:test";
 import { buildReceipt } from "../../src/analytics/index.ts";
 import { archiveKey, fingerprintOf, listArchive, writeReceipt } from "../../src/archive/index.ts";
 import { run } from "../../src/cli/run.ts";
@@ -20,9 +20,14 @@ const raw = (name: string) => readFileSync(join(FIX, name), "utf8");
 // fixture JSONL stores the cwd with escaped backslashes
 const withCwd = (text: string, cwd: string) => text.split(JSON.stringify(FIXTURE_CWD).slice(1, -1)).join(JSON.stringify(cwd).slice(1, -1));
 
+// every temp dir this file makes is removed when the file finishes, pass or fail
+const made: string[] = [];
+after(() => { for (const d of made) rmSync(d, { recursive: true, force: true, maxRetries: 3 }); });
+
 interface Home { claude: string; receiptHome: string; archive: string; env: NodeJS.ProcessEnv; project(dir: string): string }
 function home(): Home {
   const root = mkdtempSync(join(tmpdir(), "claude-receipt-cli-"));
+  made.push(root);
   const claude = join(root, "claude"), receiptHome = join(root, "receipt");
   mkdirSync(join(claude, "projects"), { recursive: true });
   return {
@@ -345,7 +350,7 @@ test("privacy: archive files and every CLI output hold no transcript text, telem
 
 // ---- export (visual receipt files) ----
 
-const outDir = () => mkdtempSync(join(tmpdir(), "claude-receipt-export-"));
+const outDir = () => { const d = mkdtempSync(join(tmpdir(), "claude-receipt-export-")); made.push(d); return d; };
 const pngSize = (b: Buffer) => [b.readUInt32BE(16), b.readUInt32BE(20)];
 const pngChunks = (b: Buffer) => { const t: string[] = []; for (let o = 8; o < b.length; o += 12 + b.readUInt32BE(o)) t.push(b.toString("latin1", o + 4, o + 8)); return [...new Set(t)]; };
 const noFonts = (svg: string) => svg.replace(/@font-face\{[^}]*\}/g, "");

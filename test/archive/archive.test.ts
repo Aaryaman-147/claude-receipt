@@ -3,7 +3,7 @@ import assert from "node:assert/strict";
 import { mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { test } from "node:test";
+import { after, test } from "node:test";
 import { buildReceipt } from "../../src/analytics/index.ts";
 import {
   ARCHIVE_SCHEMA_VERSION, archiveDir, archiveKey, contentHash, fingerprintOf, listArchive, migrateEntry, readArchived, validateEntry, writeReceipt,
@@ -16,7 +16,10 @@ const DIR = join("fixtures", "claude-code", "2.1.283");
 const SUB = join("subagent", readdirSync(join(DIR, "subagent")).find((f) => f.endsWith(".jsonl"))!);
 const FIXTURES = readdirSync(DIR).filter((f) => f.endsWith(".jsonl")).concat(SUB);
 const T0 = new Date("2026-10-01T00:00:00.000Z"), T1 = new Date("2026-10-02T00:00:00.000Z");
-const tmp = () => mkdtempSync(join(tmpdir(), "claude-receipt-archive-"));
+// every temp dir this file makes is removed when the file finishes, pass or fail
+const made: string[] = [];
+after(() => { for (const d of made) rmSync(d, { recursive: true, force: true, maxRetries: 3 }); });
+const tmp = () => { const d = mkdtempSync(join(tmpdir(), "claude-receipt-archive-")); made.push(d); return d; };
 const sessionOf = async (name: string) => (await loadSessions([refForFile(join(DIR, name))]))[0]!;
 const receiptOf = (s: Session, now = T0) => buildReceipt(s, { now, timeZone: "UTC" });
 const entryFile = (dir: string, sessionId: string) => join(dir, `${archiveKey(sessionId)}.json`);

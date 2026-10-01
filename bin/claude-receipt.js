@@ -1,3 +1,3 @@
 #!/usr/bin/env node
-// claude-receipt executable. Node >= 24 runs the TypeScript sources directly.
-import "../src/cli/main.ts";
+// claude-receipt executable: runs the compiled CLI (dist/, built by `npm run build`).
+import "../dist/cli/main.js";

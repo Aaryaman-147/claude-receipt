@@ -230,9 +230,10 @@ Evidence and status for each rule: `docs/research/M0_FINDINGS.md`; limitations a
 
 ## 9. Technology
 
-- **TypeScript on Node ≥ 24.** Node runs the `.ts` sources directly (type stripping), so there is no build step during development; `tsconfig.json` uses `erasableSyntaxOnly` to keep the code strippable. `tsc` only type-checks (`noEmit`). Packaging for npm will need a build step, decided when the CLI ships.
-- Runtime dependencies: none so far. Dev-only: `typescript`, `@types/node`.
+- **TypeScript on Node ≥ 24.** Node runs the `.ts` sources directly (type stripping), so there is no build step during development; `tsconfig.json` uses `erasableSyntaxOnly` to keep the code strippable. `tsc` only type-checks (`noEmit`).
+- Runtime dependency: `@resvg/resvg-wasm` (pinned exactly), used only to rasterize the SVG for PNG export. Dev-only: `typescript`, `@types/node`.
 - Tests: the built-in `node:test` runner.
-- Terminal: `picocolors` and `string-width` (exact column alignment including wide characters).
+- Terminal: no libraries. ANSI codes and display width (wide and combining characters) are implemented in `src/render/` and `format.ts`.
+- Packaging (`docs/RELEASE.md`): development runs the TypeScript sources; the npm package ships `dist/`, compiled by plain `tsc` (no bundler), with the fonts and licences.
 - Visual renderer (M6, `docs/VISUAL_RECEIPT.md`): Receipt → pure layout model (`VisualDoc`) → hand-written deterministic SVG (canonical) → PNG via `@resvg/resvg-wasm` (pinned; WebAssembly, no native binaries, no system fonts). No Satori, no React or frontend framework, no headless browser. IBM Plex Mono (OFL-1.1) bundled unmodified.
 - Every dependency must be justified in the PR that adds it.

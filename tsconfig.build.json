@@ -1,0 +1,17 @@
+{
+  // Production build: compile src/ to dist/ (plain ESM JavaScript, .ts imports rewritten to .js).
+  // Development keeps running the .ts sources directly; tsconfig.json stays check-only.
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "rootDir": "src",
+    "outDir": "dist",
+    "rewriteRelativeImportExtensions": true,
+    "allowImportingTsExtensions": false,
+    "sourceMap": false,
+    "declaration": false,
+    "newLine": "lf"
+  },
+  "include": ["src"],
+  "exclude": ["src/dev"]
+}

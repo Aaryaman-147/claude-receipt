@@ -3,15 +3,18 @@
 // temporary repositories only.
 import assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, writeFileSync } from "node:fs";
+import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { test } from "node:test";
+import { after, test } from "node:test";
 import { buildReceipt } from "../../src/analytics/index.ts";
 import { gitFacts } from "../../src/git/index.ts";
 import type { Session, ToolCall } from "../../src/source/claude-code/index.ts";
 
-const tmp = () => mkdtempSync(join(tmpdir(), "claude-receipt-git-"));
+// every temp dir this file makes is removed when the file finishes, pass or fail
+const made: string[] = [];
+after(() => { for (const d of made) rmSync(d, { recursive: true, force: true, maxRetries: 3 }); });
+const tmp = () => { const d = mkdtempSync(join(tmpdir(), "claude-receipt-git-")); made.push(d); return d; };
 const git = (cwd: string, args: string[], date?: string) => execFileSync("git", [
   "-c", "user.name=Receipt Tester", "-c", "user.email=tester@example.invalid", "-c", "commit.gpgsign=false",
   "-c", `core.hooksPath=${join(cwd, ".no-hooks")}`, "-c", "init.defaultBranch=main", ...args,

@@ -1,10 +1,10 @@
 // Production parser tests. Each pins a behaviour verified in M0 (docs/research/M0_FINDINGS.md)
 // against the anonymized fixtures, plus invariants that must hold for any input.
 import assert from "node:assert/strict";
-import { appendFileSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, statSync, writeFileSync } from "node:fs";
+import { appendFileSync, mkdirSync, mkdtempSync, readdirSync, readFileSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
-import { test } from "node:test";
+import { after, test } from "node:test";
 import { readJsonl } from "../../src/source/claude-code/jsonl.ts";
 import {
   findSession, liveSessionIds, loadProject, loadSessions, projectKey, reconcile, refForFile, tokensByModel,
@@ -18,7 +18,10 @@ const fx = (name: string) => join(DIR, name);
 const raw = (name: string) => readFileSync(fx(name), "utf8");
 const load = (...names: string[]) => loadSessions(names.map((n) => refForFile(fx(n))));
 const one = async (name: string) => (await load(name))[0]!;
-const tmp = () => mkdtempSync(join(tmpdir(), "claude-receipt-"));
+// every temp dir this file makes is removed when the file finishes, pass or fail
+const made: string[] = [];
+after(() => { for (const d of made) rmSync(d, { recursive: true, force: true, maxRetries: 3 }); });
+const tmp = () => { const d = mkdtempSync(join(tmpdir(), "claude-receipt-")); made.push(d); return d; };
 const fromText = async (text: string, id = "00000000-0000-4000-8000-0000000000ff") => {
   const path = join(tmp(), `${id}.jsonl`);
   writeFileSync(path, text);

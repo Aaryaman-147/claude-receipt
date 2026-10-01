@@ -1,1 +1,4 @@
 node_modules/
+# build output (npm run build); shipped in the npm package, not committed
+dist/
+*.tgz

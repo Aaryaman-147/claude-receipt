@@ -13,20 +13,23 @@ Claude Receipt turns Claude Code sessions into receipts: hard stats, coding stat
 - M1b (analytics in `src/analytics/`, Receipt model + validator in `src/receipt/`, Receipt JSON in `src/render/json.ts`, read-only git in `src/git/`): implemented.
 - M2 (local metrics-only archive in `src/archive/`): implemented.
 - M3 (CLI in `src/cli/` with the archive sweep, terminal renderer in `src/render/tty.ts` + `format.ts`, redaction in `src/receipt/redact.ts`): implemented.
-- M6 (visual receipt): specified in `docs/VISUAL_RECEIPT.md` and being built ahead of M4/M5, in stages named "Visual Receipt — Spec / SVG / PNG / Packaging" (descriptive stage names, not milestone numbers; never renumber the official roadmap). Spec, SVG and PNG stages are done: `src/render/visual/spec.ts` (design tokens), `src/render/visual/layout.ts` (Receipt → VisualDoc), `src/render/svg.ts` (VisualDoc → SVG), `src/assets.ts` (loads the bundled fonts in `assets/fonts/`), `src/render/png.ts` (SVG → PNG via `@resvg/resvg-wasm`, the only runtime dependency), `src/cli/export.ts` (`claude-receipt export`, redacted by default). Packaging is not started.
-- M4 (v0.1 release), M5 (periods), M7+ (lore, Wrapped): not started. Don't build anything beyond the current task.
+- M6 (visual receipt): specified in `docs/VISUAL_RECEIPT.md` and being built ahead of M4/M5, in stages named "Visual Receipt — Spec / SVG / PNG / Packaging" (descriptive stage names, not milestone numbers; never renumber the official roadmap). All four stages are done (Spec, SVG, PNG, Packaging): `src/render/visual/spec.ts` (design tokens), `src/render/visual/layout.ts` (Receipt → VisualDoc), `src/render/svg.ts` (VisualDoc → SVG), `src/assets.ts` (loads the bundled fonts in `assets/fonts/`), `src/render/png.ts` (SVG → PNG via `@resvg/resvg-wasm`, the only runtime dependency), `src/cli/export.ts` (`claude-receipt export`, redacted by default). Packaging ships the fonts and resvg-wasm in the npm package (`docs/RELEASE.md`).
+- M4 (v0.1 release): packaged as `claude-receipt@0.1.0` (`tsc` build to `dist/`, MIT `LICENSE`), not published. Open: macOS/Linux install check, repository URL, publishing.
+- M5 (periods), M7+ (lore, Wrapped): not started. Don't build anything beyond the current task.
 - The visual renderer is a pure consumer of the Receipt, exactly like the terminal renderer: no filesystem, git, archive, transcript or environment access, no new analytics, and the same provenance marks and copy from `src/render/format.ts`.
 
 ## Commands
 
-Node ≥ 24 runs the TypeScript sources directly (no build step). Dev-only dependencies: `typescript`, `@types/node` (`npm install`). One runtime dependency: `@resvg/resvg-wasm` (pinned exactly; WebAssembly, no native code), used only by PNG export. No linter is configured.
+Node ≥ 24 runs the TypeScript sources directly in development. The npm package ships compiled JavaScript: `npm run build` (also run by `npm install` and `npm pack` via `prepare`) compiles `src/` to `dist/`, and `bin/claude-receipt.js` runs `dist/` (see `docs/RELEASE.md`). Dev-only dependencies: `typescript`, `@types/node` (`npm install`). One runtime dependency: `@resvg/resvg-wasm` (pinned exactly; WebAssembly, no native code), used only by PNG export. No linter is configured.
 
 | Command | What it does |
 |---|---|
-| `npm test` | All tests: parser (`test/source/`), analytics and Receipt contract (`test/analytics/`), git enrichment on throwaway repos (`test/git/`), archive (`test/archive/`), renderer and snapshots (`test/render/`), CLI and sweep (`test/cli/`), fixture safety |
+| `npm test` | All tests: parser (`test/source/`), analytics and Receipt contract (`test/analytics/`), git enrichment on throwaway repos (`test/git/`), archive (`test/archive/`), renderers and snapshots (`test/render/`), CLI, sweep and export (`test/cli/`), package contents (`test/package.test.ts`), fixture safety. Temp directories are removed in `after()` hooks; keep it that way |
 | `node src/cli/main.ts export [last \| <prefix>] [--png \| --svg] [-o <file>] [--no-redact]` | Write a visual receipt file (redacted by default, never overwrites; see `docs/VISUAL_RECEIPT.md` → Export). Exports are sensitive files; in tests write them to a temp directory |
 | `node src/cli/main.ts [last \| list \| <prefix>] [--json] [--redact] [--no-archive]` | The product CLI (also `npm run receipt --`, or `claude-receipt` after `npm link`). Writes to the real archive unless `--no-archive` or `CLAUDE_RECEIPT_HOME` points elsewhere |
 | `npm run typecheck` | `tsc` in strict mode, no emit |
+| `npm run build` | Compile `src/` (minus `src/dev/`) to `dist/` with `tsconfig.build.json` |
+| `npm pack` | Build and create the release tarball; `test/package.test.ts` checks its contents |
 | `node src/dev/parse.ts <main.jsonl>...` | Parse transcripts together (forks detected among them) and print Session JSON |
 | `node src/dev/parse.ts --session <id\|prefix>` / `--all` | Same for local sessions under `CLAUDE_CONFIG_DIR` or `~/.claude` |
 | `node src/dev/parse.ts … --summary` | Counts only. **Use this on real sessions**; full Session JSON contains paths and titles |

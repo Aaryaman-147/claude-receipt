@@ -4,7 +4,7 @@
 // docs/METRICS.md. Breaking changes to this file require RECEIPT_SCHEMA_VERSION + 1.
 
 export const RECEIPT_SCHEMA_VERSION = 1;
-export const GENERATOR = { name: "claude-receipt", version: "0.0.0" } as const;
+export const GENERATOR = { name: "claude-receipt", version: "0.1.0" } as const; // = package.json version (tested)
 
 export type Provenance = "exact" | "derived" | "heuristic";
 export type Unit = "ms" | "tokens" | "usd" | "count" | "lines" | "hour" | "ratio";

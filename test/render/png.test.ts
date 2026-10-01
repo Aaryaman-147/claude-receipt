@@ -3,7 +3,7 @@
 import assert from "node:assert/strict";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
-import { readdirSync } from "node:fs";
+import { existsSync, readdirSync, readFileSync, writeFileSync } from "node:fs";
 import { join } from "node:path";
 import { test } from "node:test";
 import { inflateSync } from "node:zlib";
@@ -192,3 +192,12 @@ test("live: the LIVE band is a solid ink bar with its words knocked out in paper
 });
 
 const GOLDEN_ORDINARY = "ca57ec5c9bdd54e686a567f713740c69860af66c4713aa68427179ff9616e231";
+
+// The README's sample image: the redacted receipt of an anonymized fixture, regenerated with
+// UPDATE_SNAPSHOTS=1 so it always shows the current renderer.
+test("docs/receipt-sample.png is the current redacted PNG of the ordinary fixture", async () => {
+  const { png } = await render(redactReceipt(await receiptOf("ordinary.jsonl")));
+  const file = join("docs", "receipt-sample.png");
+  if (process.env.UPDATE_SNAPSHOTS || !existsSync(file)) writeFileSync(file, png);
+  assert.equal(sha(readFileSync(file)), sha(png));
+});

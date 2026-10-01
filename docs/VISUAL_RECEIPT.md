@@ -9,7 +9,7 @@ The work is delivered in four implementation stages, named descriptively so they
 | **Visual Receipt — Spec** | This document | Done |
 | **Visual Receipt — SVG** | Layout model, SVG renderer, bundled font, tests | Done |
 | **Visual Receipt — PNG** | PNG from the SVG, `claude-receipt export` | Done |
-| **Visual Receipt — Packaging** | Shipping the visual pieces (font files, WASM) in the npm package; optional polish | Not started |
+| **Visual Receipt — Packaging** | Shipping the visual pieces (font files, WASM) in the npm package; optional polish | Done (no polish added) |
 
 (These stages were drafted as "M4a–M4d" in conversation; those labels are not milestone numbers. The general npm release remains official **M4**.)
 

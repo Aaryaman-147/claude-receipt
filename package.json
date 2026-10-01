@@ -1,26 +1,40 @@
 {
   "name": "claude-receipt",
-  "version": "0.0.0",
-  "private": true,
-  "description": "Local-first receipts for Claude Code sessions (pre-release)",
+  "version": "0.1.0",
+  "description": "Local-first receipts for Claude Code sessions: hard stats, coding stats and session lore, in the terminal or as an image",
+  "license": "MIT",
   "type": "module",
+  "bin": {
+    "claude-receipt": "bin/claude-receipt.js"
+  },
+  "files": [
+    "bin/",
+    "dist/",
+    "assets/fonts/"
+  ],
   "engines": {
     "node": ">=24"
   },
   "scripts": {
+    "build": "node -e \"require('node:fs').rmSync('dist',{recursive:true,force:true})\" && tsc -p tsconfig.build.json",
+    "prepare": "npm run build",
     "test": "node --test \"test/**/*.test.ts\" \"test/**/*.test.mjs\"",
     "typecheck": "tsc -p .",
     "receipt": "node src/cli/main.ts",
     "dev:parse": "node src/dev/parse.ts"
   },
+  "keywords": [
+    "claude-code",
+    "claude",
+    "receipt",
+    "cli",
+    "local-first"
+  ],
+  "dependencies": {
+    "@resvg/resvg-wasm": "2.6.2"
+  },
   "devDependencies": {
     "@types/node": "26.6.3",
     "typescript": "7.0.2"
-  },
-  "bin": {
-    "claude-receipt": "bin/claude-receipt.js"
-  },
-  "dependencies": {
-    "@resvg/resvg-wasm": "2.6.2"
   }
 }
